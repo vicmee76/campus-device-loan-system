@@ -4,8 +4,8 @@ This repo contains all components for the cloud-native microservice system requi
 
 ## Structure
 - **/frontend** – Web UI for students and staff.
-- **/backend-device-service** – Handles device catalog, reservations, waitlist.
-- **/backend-loan-service** – Handles collections, returns, notifications.
+- **/device-service** – Handles device catalog, reservations, waitlist and users.
+- **/loan-service** – Handles collections, returns, notifications.
 - **/infra** – Infrastructure as code (Terraform / Bicep / YAML).
 - **/docs** – Architecture diagrams, NFRs, plans, and project documentation.
 
