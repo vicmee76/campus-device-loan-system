@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import db from '../../database/connection';
 import { UserTable } from '../model/user.model';
-import { UserDto, CreateUserDto, UpdateUserDto } from '../dtos/user.dto';
+import { UserDto, CreateUserDto, UpdateUserDto, PaginatedResult, PaginationMeta } from '../dtos/user.dto';
 import UserFactory from '../factory/user.factory';
 import { hashPassword } from '../utils/password.utils';
 
@@ -12,15 +12,15 @@ export class UserRepository {
 
 
     async create(userData: CreateUserDto): Promise<UserDto> {
-        const hashedPassword = await hashPassword(userData.Password);
-        
+        const hashedPassword = await hashPassword(userData.password);
+
         const [user] = await db(this.tableName)
             .insert({
-                email: userData.Email,
+                email: userData.email,
                 password: hashedPassword,
-                first_name: userData.FirstName,
-                last_name: userData.LastName,
-                role: userData.Role,
+                first_name: userData.firstName,
+                last_name: userData.lastName,
+                role: userData.role,
                 is_active: true,
                 is_deleted: false,
             })
@@ -29,7 +29,7 @@ export class UserRepository {
         return UserFactory.toDto(user as UserTable);
     }
 
-   
+
     async findById(userId: string, includeDeleted: boolean = false): Promise<UserDto | null> {
         let query = db(this.tableName).where('user_id', userId);
 
@@ -50,38 +50,79 @@ export class UserRepository {
         return user ? UserFactory.toDto(user as UserTable) : null;
     }
 
+    async findByEmailWithPassword(email: string): Promise<UserTable | null> {
+        const user = await db(this.tableName)
+            .where('email', email)
+            .where('is_deleted', false)
+            .where('is_active', true)
+            .first();
+
+        return user ? (user as UserTable) : null;
+    }
+
     async findAll(options: {
         role?: 'student' | 'staff';
         isActive?: boolean;
         includeDeleted?: boolean;
-        limit?: number;
-        offset?: number;
-    } = {}): Promise<UserDto[]> {
-        let query = db(this.tableName);
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        page?: number;
+        pageSize?: number;
+    } = {}): Promise<PaginatedResult<UserDto>> {
+        let baseQuery = db(this.tableName);
 
         if (options.role)
-            query = query.where('role', options.role);
+            baseQuery = baseQuery.where('role', options.role);
 
         if (options.isActive !== undefined)
-            query = query.where('is_active', options.isActive);
+            baseQuery = baseQuery.where('is_active', options.isActive);
 
         if (!options.includeDeleted)
-            query = query.where('is_deleted', false);
+            baseQuery = baseQuery.where('is_deleted', false);
 
-        if (options.limit)
-            query = query.limit(options.limit);
+        if (options.firstName)
+            baseQuery = baseQuery.whereILike('first_name', `%${options.firstName}%`);
 
-        if (options.offset)
-            query = query.offset(options.offset);
+        if (options.lastName)
+            baseQuery = baseQuery.whereILike('last_name', `%${options.lastName}%`);
 
-        query = query.orderBy('created_at', 'desc');
+        if (options.email)
+            baseQuery = baseQuery.whereILike('email', `%${options.email}%`);
 
-        const users = await query;
+        const totalCountResult = await baseQuery.clone().count('* as count').first();
+        const totalCount = parseInt((totalCountResult as { count: string }).count, 10);
 
-        return UserFactory.toDtoArray(users as UserTable[]);
+        let dataQuery = baseQuery.clone().orderBy('created_at', 'desc');
+
+        const page = options.page || 1;
+        const pageSize = options.pageSize || 10;
+
+        if (options.page && options.pageSize) {
+            const offset = (page - 1) * pageSize;
+            dataQuery = dataQuery.limit(pageSize).offset(offset);
+        }
+
+        const users = await dataQuery;
+        const userDtos = UserFactory.toDtoArray(users as UserTable[]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const pagination: PaginationMeta = {
+            page,
+            pageSize,
+            totalCount,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
+        };
+
+        return {
+            pagination,
+            data: userDtos,
+        };
     }
 
-  
+
 
 
     async update(userId: string, userData: UpdateUserDto): Promise<UserDto | null> {
@@ -94,17 +135,6 @@ export class UserRepository {
             .returning('*');
 
         return updatedUser ? UserFactory.toDto(updatedUser as UserTable) : null;
-    }
-
-    async updatePassword(userId: string, password: string): Promise<boolean> {
-        const hashedPassword = await hashPassword(password);
-        
-        const result = await db(this.tableName)
-            .where('user_id', userId)
-            .where('is_deleted', false)
-            .update({ password: hashedPassword });
-
-        return result > 0;
     }
 
 

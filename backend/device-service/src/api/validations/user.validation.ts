@@ -1,24 +1,25 @@
 export const createUserRule = {
-  Email: 'required|email|max:255',
-  Password: 'required|string|min:8|max:255|strong_password',
-  FirstName: 'required|string|min:2|max:100',
-  LastName: 'required|string|min:2|max:100',
-  Role: 'required|string|in:student,staff',
+  email: 'required|email|max:255',
+  password: 'required|string|min:8|max:255|strong_password',
+  firstName: 'required|string|min:2|max:100',
+  lastName: 'required|string|min:2|max:100',
+  role: 'required|string|in:student,staff',
 };
 
 export const updateUserRule = {
-  Email: 'email|max:255',
-  FirstName: 'string|min:2|max:100',
-  LastName: 'string|min:2|max:100',
-  Role: 'string|in:student,staff',
-  IsActive: 'boolean',
-};
-
-export const updatePasswordRule = {
-  Password: 'required|string|min:8|max:255|strong_password',
+  email: 'email|max:255',
+  firstName: 'string|min:2|max:100',
+  lastName: 'string|min:2|max:100',
+  role: 'string|in:student,staff',
+  isActive: 'boolean',
 };
 
 export const emailRule = {
   email: 'required|email|max:255',
+};
+
+export const loginRule = {
+  email: 'required|email|max:255',
+  password: 'required|string',
 };
 

@@ -6,14 +6,14 @@ dotenv.config();
 
 // Database configuration
 const dbConfig: Knex.Config = {
-  client: process.env.DB_CLIENT as string,
+  client: process.env.DB_CLIENT || 'postgresql',
   connection: {
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT as string),
     database: process.env.DB_NAME as string,
     user: process.env.DB_USER as string,
     password: process.env.DB_PASSWORD as string,
-    ssl: process.env.DB_SSL ? { rejectUnauthorized: false } : false,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   },
   pool: {
     min: 2,

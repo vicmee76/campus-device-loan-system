@@ -7,14 +7,14 @@ export class UserFactory {
 
     static toDto(userTable: UserTable): UserDto {
         return {
-            UserId: userTable.user_id,
-            Email: userTable.email,
-            FirstName: userTable.first_name,
-            LastName: userTable.last_name,
-            Role: userTable.role,
-            CreatedAt: userTable.created_at,
-            IsActive: userTable.is_active,
-            IsDeleted: userTable.is_deleted,
+            userId: userTable.user_id,
+            email: userTable.email,
+            firstName: userTable.first_name,
+            lastName: userTable.last_name,
+            role: userTable.role,
+            createdAt: userTable.created_at,
+            isActive: userTable.is_active,
+            isDeleted: userTable.is_deleted,
         };
     }
 
@@ -28,33 +28,33 @@ export class UserFactory {
 
 
 
-    static toTable(userDto: Partial<UserDto & { Password?: string }>): Partial<UserTable> {
+    static toTable(userDto: Partial<UserDto & { password?: string }>): Partial<UserTable> {
         const table: Partial<UserTable> = {};
 
-        if (userDto.UserId !== undefined) table.user_id = userDto.UserId;
-        if (userDto.Email !== undefined) table.email = userDto.Email;
-        if ((userDto as any).Password !== undefined) table.password = (userDto as any).Password;
-        if (userDto.FirstName !== undefined) table.first_name = userDto.FirstName;
-        if (userDto.LastName !== undefined) table.last_name = userDto.LastName;
-        if (userDto.Role !== undefined) table.role = userDto.Role;
-        if (userDto.CreatedAt !== undefined) table.created_at = userDto.CreatedAt;
-        if (userDto.IsActive !== undefined) table.is_active = userDto.IsActive;
-        if (userDto.IsDeleted !== undefined) table.is_deleted = userDto.IsDeleted;
+        if (userDto.userId !== undefined) table.user_id = userDto.userId;
+        if (userDto.email !== undefined) table.email = userDto.email;
+        if ((userDto as any).password !== undefined) table.password = (userDto as any).password;
+        if (userDto.firstName !== undefined) table.first_name = userDto.firstName;
+        if (userDto.lastName !== undefined) table.last_name = userDto.lastName;
+        if (userDto.role !== undefined) table.role = userDto.role;
+        if (userDto.createdAt !== undefined) table.created_at = userDto.createdAt;
+        if (userDto.isActive !== undefined) table.is_active = userDto.isActive;
+        if (userDto.isDeleted !== undefined) table.is_deleted = userDto.isDeleted;
 
         return table;
     }
 
 
-    static createDto(data: CreateUserDto & { UserId?: string; CreatedAt?: Date }): UserDto {
+    static createDto(data: CreateUserDto & { userId?: string; createdAt?: Date }): UserDto {
         return {
-            UserId: data.UserId || '',
-            Email: data.Email,
-            FirstName: data.FirstName,
-            LastName: data.LastName,
-            Role: data.Role,
-            CreatedAt: data.CreatedAt || new Date(),
-            IsActive: true,
-            IsDeleted: false,
+            userId: data.userId || '',
+            email: data.email,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            role: data.role,
+            createdAt: data.createdAt || new Date(),
+            isActive: true,
+            isDeleted: false,
         };
     }
 }

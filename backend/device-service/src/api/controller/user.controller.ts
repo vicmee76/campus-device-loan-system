@@ -5,6 +5,12 @@ import { getStatusCode } from '../utils/controller.utils';
 
 @injectable()
 export class UserController {
+    
+  async login(req: Request, res: Response): Promise<Response> {
+    const result = await userService.login(req.body);
+    return res.status(getStatusCode(result)).json(result);
+  }
+
   async createUser(req: Request, res: Response): Promise<Response> {
     const result = await userService.createUser(req.body);
     return res.status(getStatusCode(result, 201)).json(result);
@@ -25,12 +31,18 @@ export class UserController {
   }
 
   async getAllUsers(req: Request, res: Response): Promise<Response> {
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 10;
+
     const options = {
       role: req.query.role as 'student' | 'staff' | undefined,
       isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
       includeDeleted: req.query.includeDeleted === 'true',
-      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
+      firstName: req.query.firstName as string | undefined,
+      lastName: req.query.lastName as string | undefined,
+      email: req.query.email as string | undefined,
+      page,
+      pageSize,
     };
 
     const result = await userService.getAllUsers(options);

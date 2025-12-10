@@ -1,43 +1,71 @@
 export interface UserDto {
-  UserId: string; // UUID
-  Email: string;
-  FirstName: string;
-  LastName: string;
-  Role: 'student' | 'staff';
-  CreatedAt: Date;
-  IsActive: boolean;
-  IsDeleted: boolean;
+  userId: string; // UUID
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'student' | 'staff';
+  createdAt: Date;
+  isActive: boolean;
+  isDeleted: boolean;
 }
 
 /**
  * DTO for creating a new user
- * IsActive defaults to true, IsDeleted defaults to false
+ * isActive defaults to true, isDeleted defaults to false
  */
 export interface CreateUserDto {
-  Email: string;
-  Password: string;
-  FirstName: string;
-  LastName: string;
-  Role: 'student' | 'staff';
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: 'student' | 'staff';
 }
 
 /**
  * DTO for updating a user
- * All fields are optional except UserId
- * Note: Password updates should use UpdatePasswordDto
+ * All fields are optional except userId
  */
 export interface UpdateUserDto {
-  Email?: string;
-  FirstName?: string;
-  LastName?: string;
-  Role?: 'student' | 'staff';
-  IsActive?: boolean;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'student' | 'staff';
+  isActive?: boolean;
 }
 
 /**
- * DTO for updating user password
+ * DTO for user login
  */
-export interface UpdatePasswordDto {
-  Password: string;
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+/**
+ * DTO for login response
+ */
+export interface LoginResponseDto {
+  token: string;
+  user: UserDto;
+}
+
+/**
+ * Pagination metadata
+ */
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+/**
+ * Paginated result
+ */
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: PaginationMeta;
 }
 
