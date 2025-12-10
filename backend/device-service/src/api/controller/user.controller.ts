@@ -5,28 +5,15 @@ import { getStatusCode } from '../utils/controller.utils';
 
 @injectable()
 export class UserController {
-    
   async login(req: Request, res: Response): Promise<Response> {
     const result = await userService.login(req.body);
     return res.status(getStatusCode(result)).json(result);
-  }
-
-  async createUser(req: Request, res: Response): Promise<Response> {
-    const result = await userService.createUser(req.body);
-    return res.status(getStatusCode(result, 201)).json(result);
   }
 
   async getUserById(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
     const includeDeleted = req.query.includeDeleted === 'true';
     const result = await userService.getUserById(id, includeDeleted);
-    return res.status(getStatusCode(result)).json(result);
-  }
-
-  async getUserByEmail(req: Request, res: Response): Promise<Response> {
-    const { email } = req.query;
-    const includeDeleted = req.query.includeDeleted === 'true';
-    const result = await userService.getUserByEmail(email as string, includeDeleted);
     return res.status(getStatusCode(result)).json(result);
   }
 
@@ -46,30 +33,6 @@ export class UserController {
     };
 
     const result = await userService.getAllUsers(options);
-    return res.status(getStatusCode(result)).json(result);
-  }
-
-  async updateUser(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
-    const result = await userService.updateUser(id, req.body);
-    return res.status(getStatusCode(result)).json(result);
-  }
-
-  async softDeleteUser(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
-    const result = await userService.softDeleteUser(id);
-    return res.status(getStatusCode(result)).json(result);
-  }
-
-  async activateUser(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
-    const result = await userService.activateUser(id);
-    return res.status(getStatusCode(result)).json(result);
-  }
-
-  async deactivateUser(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
-    const result = await userService.deactivateUser(id);
     return res.status(getStatusCode(result)).json(result);
   }
 }

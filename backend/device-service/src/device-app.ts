@@ -28,8 +28,10 @@ app.get('/health', (req, res) => {
 
 // Routes
 import userRoutes from './api/routes/user.routes';
+import deviceRoutes from './api/routes/device.routes';
 
 app.use('/v1/api/users', userRoutes);
+app.use('/v1/api/devices', deviceRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
