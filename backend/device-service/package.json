@@ -30,13 +30,17 @@
     "knex": "^3.0.1",
     "morgan": "^1.10.0",
     "pg": "^8.11.3",
+    "bcrypt": "^5.1.1",
+    "tsyringe": "^4.8.0",
     "validatorjs": "^3.22.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.6",
+    "@types/validatorjs": "^3.15.0",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
     "eslint": "^8.56.0",

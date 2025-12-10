@@ -14,7 +14,9 @@ const config: { [key: string]: Knex.Config } = {
       database: process.env.DB_NAME || 'campus_device_loan',
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
+      options: '-c search_path=public',
     },
+    searchPath: ['public'],
     pool: {
       min: 2,
       max: 10,
@@ -22,6 +24,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       tableName: 'knex_migrations',
       directory: './migrations',
+      schemaName: 'public',
     },
     seeds: {
       directory: './seeds',
@@ -36,7 +39,9 @@ const config: { [key: string]: Knex.Config } = {
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
+      options: '-c search_path=public',
     },
+    searchPath: ['public'],
     pool: {
       min: 2,
       max: 10,
@@ -44,6 +49,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       tableName: 'knex_migrations',
       directory: './migrations',
+      schemaName: 'public',
     },
     seeds: {
       directory: './seeds',
@@ -59,7 +65,9 @@ const config: { [key: string]: Knex.Config } = {
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      options: '-c search_path=public',
     },
+    searchPath: ['public'],
     pool: {
       min: 2,
       max: 10,
@@ -67,6 +75,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       tableName: 'knex_migrations',
       directory: './migrations',
+      schemaName: 'public',
     },
     seeds: {
       directory: './seeds',

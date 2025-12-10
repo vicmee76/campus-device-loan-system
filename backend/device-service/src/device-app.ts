@@ -26,8 +26,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Routes will be added here
-// app.use('/api/devices', deviceRoutes);
+// Routes
+import userRoutes from './api/routes/user.routes';
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
