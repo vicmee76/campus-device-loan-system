@@ -8,17 +8,25 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const app: Application = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 7778;
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+};
 
 // Middleware
+app.use(cors(corsOptions));
 app.use(helmet());
-app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'device-service',
@@ -29,12 +37,16 @@ app.get('/health', (req, res) => {
 // Routes
 import userRoutes from './api/routes/user.routes';
 import deviceRoutes from './api/routes/device.routes';
+import deviceInventoryRoutes from './api/routes/device-inventory.routes';
+import reservationRoutes from './api/routes/reservation.routes';
 
 app.use('/v1/api/users', userRoutes);
 app.use('/v1/api/devices', deviceRoutes);
+app.use('/v1/api/device-inventory', deviceInventoryRoutes);
+app.use('/v1/api/reservations', reservationRoutes);
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
   res.status(500).json({
     error: 'Internal Server Error',

@@ -52,3 +52,16 @@ export interface PaginatedResult<T> {
   pagination: PaginationMeta;
 }
 
+/**
+ * DTO for device list with inventory counts
+ */
+export interface DeviceWithInventoryDto {
+  deviceId: string;
+  brand: string;
+  model: string;
+  category: string;
+  description: string | null;
+  totalUnits: number;
+  availableUnits: number;
+}
+
