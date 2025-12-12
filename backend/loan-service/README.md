@@ -65,7 +65,23 @@ curl -H "Authorization: Bearer <token-from-device-service>" \
 npm install
 ```
 
-2. Set up environment variables (see `.env.example`)
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+   **Required Environment Variables:**
+   - `DATABASE_URL` - PostgreSQL connection string (e.g., `postgresql://user:password@host:port/database`)
+   - `JWT_SECRET` - Shared secret for JWT validation (MUST match Device Service)
+   - `JWT_EXPIRES_IN` - Token expiration time (e.g., `24h`)
+   - `PORT` - Service port (default: 7779)
+   - `NODE_ENV` - Environment (development, production, test)
+   - `CORS_ORIGIN` - Allowed CORS origin (default: `*`)
+   - `LOG_LEVEL` - Logging level: DEBUG, INFO, WARN, ERROR (default: DEBUG)
+
+   **Optional:**
+   - `SIMULATE_EMAIL_FAILURE` - Set to `true` to simulate email failures for testing
 
 3. **Important**: This service does NOT run migrations.
    - Migrations are located in the global `/database` folder at the project root

@@ -9,5 +9,6 @@ const router = Router();
 router.post('/login', validate(loginRule, 'body'), userController.login.bind(userController));
 router.get('/get-all-users', authenticate, requireStaff, userController.getAllUsers.bind(userController));
 router.get('/get-user-by-id/:id', authenticate, requireStaff, userController.getUserById.bind(userController));
+router.get('/me', authenticate, userController.getCurrentUser.bind(userController));
 
 export default router;

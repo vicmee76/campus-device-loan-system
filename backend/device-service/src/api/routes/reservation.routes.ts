@@ -9,6 +9,7 @@ router.patch('/:reservationId/cancel', authenticate, reservationController.cance
 router.get('/get-all', authenticate, requireStaff, reservationController.getAllReservations.bind(reservationController));
 router.get('/get-by-user-id/:userId', authenticate, requireStaff, reservationController.getReservationsByUserId.bind(reservationController));
 router.get('/get-by-device-id/:deviceId', authenticate, requireStaff, reservationController.getReservationsByDeviceId.bind(reservationController));
+router.get('/me', authenticate, reservationController.getMyReservations.bind(reservationController));
 
 export default router;
 

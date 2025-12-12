@@ -170,5 +170,108 @@ describe('ReservationService - Unit Tests', () => {
       expect(mockTrx.rollback).toHaveBeenCalled();
     });
   });
+
+  describe('getMyReservations', () => {
+    const mockUserId = 'user-123';
+    const mockReservationsData = [
+      {
+        reservation_id: 'reservation-1',
+        user_id: mockUserId,
+        device_id: 'device-1',
+        inventory_id: 'inventory-1',
+        reserved_at: new Date('2024-01-01'),
+        due_date: new Date('2024-01-03'),
+        status: 'pending',
+        email: 'user@example.com',
+        first_name: 'John',
+        last_name: 'Doe',
+        role: 'student',
+        brand: 'Apple',
+        model: 'MacBook Pro',
+        category: 'Laptop',
+        serial_number: 'SN123',
+        is_available: false,
+      },
+      {
+        reservation_id: 'reservation-2',
+        user_id: mockUserId,
+        device_id: 'device-2',
+        inventory_id: 'inventory-2',
+        reserved_at: new Date('2024-01-02'),
+        due_date: new Date('2024-01-04'),
+        status: 'collected',
+        email: 'user@example.com',
+        first_name: 'John',
+        last_name: 'Doe',
+        role: 'student',
+        brand: 'Dell',
+        model: 'XPS 13',
+        category: 'Laptop',
+        serial_number: 'SN456',
+        is_available: false,
+      },
+    ];
+
+    it('should get my reservations with pagination successfully', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(2);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue(mockReservationsData);
+
+      const result = await reservationService.getMyReservations(mockUserId, { page: 1, pageSize: 10 });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data?.pagination.totalCount).toBe(2);
+      expect(result.data?.pagination.page).toBe(1);
+      expect(result.data?.pagination.pageSize).toBe(10);
+      expect(result.data?.data).toHaveLength(2);
+      expect(result.data?.data[0].reservationId).toBe('reservation-1');
+      expect(result.data?.data[0].user.email).toBe('user@example.com');
+      expect(result.data?.data[0].device.brand).toBe('Apple');
+      expect(mockReservationRepository.countByUserId).toHaveBeenCalledWith(mockUserId);
+      expect(mockReservationRepository.findByUserIdWithPagination).toHaveBeenCalledWith(mockUserId, { page: 1, pageSize: 10 });
+    });
+
+    it('should use default pagination when options not provided', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(0);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue([]);
+
+      const result = await reservationService.getMyReservations(mockUserId);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.pagination.page).toBe(1);
+      expect(result.data?.pagination.pageSize).toBe(10);
+      expect(mockReservationRepository.findByUserIdWithPagination).toHaveBeenCalledWith(mockUserId, { page: 1, pageSize: 10 });
+    });
+
+    it('should calculate pagination metadata correctly', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(25);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue(mockReservationsData.slice(0, 10));
+
+      const result = await reservationService.getMyReservations(mockUserId, { page: 2, pageSize: 10 });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.pagination.totalCount).toBe(25);
+      expect(result.data?.pagination.totalPages).toBe(3);
+      expect(result.data?.pagination.hasNextPage).toBe(true);
+      expect(result.data?.pagination.hasPreviousPage).toBe(true);
+    });
+
+    it('should return validation error when userId is empty', async () => {
+      const result = await reservationService.getMyReservations('');
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('09');
+      expect(mockReservationRepository.countByUserId).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockReservationRepository.countByUserId.mockRejectedValue(new Error('Database error'));
+
+      const result = await reservationService.getMyReservations(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+    });
+  });
 });
 

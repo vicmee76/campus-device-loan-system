@@ -232,5 +232,78 @@ describe('UserService - Unit Tests', () => {
       expect(result.code).toBe('06');
     });
   });
+
+  describe('getCurrentUser', () => {
+    const mockUserId = 'user-123';
+    const mockUserDto: UserDto = {
+      userId: mockUserId,
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'student',
+      createdAt: new Date(),
+      isActive: true,
+      isDeleted: false,
+    };
+
+    it('should return current user when found and active', async () => {
+      mockUserRepository.findById.mockResolvedValue(mockUserDto);
+
+      const result = await userService.getCurrentUser(mockUserId);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockUserDto);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(mockUserId, false);
+    });
+
+    it('should return not found when user does not exist', async () => {
+      mockUserRepository.findById.mockResolvedValue(null);
+
+      const result = await userService.getCurrentUser(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('05');
+      expect(result.data).toBeNull();
+    });
+
+    it('should return not found when user is deleted', async () => {
+      const deletedUser = { ...mockUserDto, isDeleted: true };
+      mockUserRepository.findById.mockResolvedValue(deletedUser);
+
+      const result = await userService.getCurrentUser(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('05');
+      expect(result.message).toBe('User not found');
+    });
+
+    it('should return not found when user is inactive', async () => {
+      const inactiveUser = { ...mockUserDto, isActive: false };
+      mockUserRepository.findById.mockResolvedValue(inactiveUser);
+
+      const result = await userService.getCurrentUser(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('05');
+      expect(result.message).toBe('User not found');
+    });
+
+    it('should return validation error when userId is empty', async () => {
+      const result = await userService.getCurrentUser('');
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('09');
+      expect(mockUserRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockUserRepository.findById.mockRejectedValue(new Error('Database error'));
+
+      const result = await userService.getCurrentUser(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+    });
+  });
 });
 

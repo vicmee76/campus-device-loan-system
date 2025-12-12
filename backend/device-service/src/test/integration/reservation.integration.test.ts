@@ -137,5 +137,131 @@ describe('Reservation API - Integration Tests', () => {
         .expect(401);
     });
   });
+
+  describe('GET /v1/api/reservations/me', () => {
+    const mockReservationsData = [
+      {
+        reservation_id: 'reservation-1',
+        user_id: studentUserId,
+        device_id: 'device-1',
+        inventory_id: 'inventory-1',
+        reserved_at: new Date('2024-01-01'),
+        due_date: new Date('2024-01-03'),
+        status: 'pending',
+        email: 'student@example.com',
+        first_name: 'Student',
+        last_name: 'User',
+        role: 'student',
+        brand: 'Apple',
+        model: 'MacBook Pro',
+        category: 'Laptop',
+        serial_number: 'SN123',
+        is_available: false,
+      },
+      {
+        reservation_id: 'reservation-2',
+        user_id: studentUserId,
+        device_id: 'device-2',
+        inventory_id: 'inventory-2',
+        reserved_at: new Date('2024-01-02'),
+        due_date: new Date('2024-01-04'),
+        status: 'collected',
+        email: 'student@example.com',
+        first_name: 'Student',
+        last_name: 'User',
+        role: 'student',
+        brand: 'Dell',
+        model: 'XPS 13',
+        category: 'Laptop',
+        serial_number: 'SN456',
+        is_available: false,
+      },
+    ];
+
+    it('should get my reservations with pagination successfully', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(2);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue(mockReservationsData);
+
+      const response = await request(app)
+        .get('/v1/api/reservations/me')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.pagination.totalCount).toBe(2);
+      expect(response.body.data.pagination.page).toBe(1);
+      expect(response.body.data.pagination.pageSize).toBe(10);
+      expect(response.body.data.data).toHaveLength(2);
+      expect(response.body.data.data[0].reservationId).toBe('reservation-1');
+      expect(response.body.data.data[0].user.email).toBe('student@example.com');
+      expect(response.body.data.data[0].device.brand).toBe('Apple');
+      expect(mockReservationRepository.countByUserId).toHaveBeenCalledWith(studentUserId);
+    });
+
+    it('should use default pagination when query params not provided', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(0);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get('/v1/api/reservations/me')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(200);
+
+      expect(response.body.data.pagination.page).toBe(1);
+      expect(response.body.data.pagination.pageSize).toBe(10);
+      expect(mockReservationRepository.findByUserIdWithPagination).toHaveBeenCalledWith(studentUserId, { page: 1, pageSize: 10 });
+    });
+
+    it('should handle custom pagination parameters', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(25);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue(mockReservationsData.slice(0, 5));
+
+      const response = await request(app)
+        .get('/v1/api/reservations/me?page=2&pageSize=5')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(200);
+
+      expect(response.body.data.pagination.page).toBe(2);
+      expect(response.body.data.pagination.pageSize).toBe(5);
+      expect(response.body.data.pagination.totalCount).toBe(25);
+      expect(response.body.data.pagination.totalPages).toBe(5);
+      expect(response.body.data.pagination.hasNextPage).toBe(true);
+      expect(response.body.data.pagination.hasPreviousPage).toBe(true);
+      expect(mockReservationRepository.findByUserIdWithPagination).toHaveBeenCalledWith(studentUserId, { page: 2, pageSize: 5 });
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      await request(app)
+        .get('/v1/api/reservations/me')
+        .expect(401);
+    });
+
+    it('should return empty array when no reservations exist', async () => {
+      mockReservationRepository.countByUserId.mockResolvedValue(0);
+      mockReservationRepository.findByUserIdWithPagination.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get('/v1/api/reservations/me')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.data).toHaveLength(0);
+      expect(response.body.data.pagination.totalCount).toBe(0);
+    });
+
+    it('should handle database errors gracefully', async () => {
+      mockReservationRepository.countByUserId.mockRejectedValue(new Error('Database connection failed'));
+
+      const response = await request(app)
+        .get('/v1/api/reservations/me')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('06');
+    });
+  });
 });
 

@@ -147,6 +147,71 @@ export class ReservationRepository {
     return results;
   }
 
+  async findByUserIdWithPagination(userId: string, options: {
+    page?: number;
+    pageSize?: number;
+  } = {}): Promise<any[]> {
+    const page = options.page || 1;
+    const pageSize = options.pageSize || 10;
+    const offset = (page - 1) * pageSize;
+
+    const results = await db(this.tableName)
+      .join('users', 'reservations.user_id', 'users.user_id')
+      .join('devices', 'reservations.device_id', 'devices.device_id')
+      .join('device_inventory', 'reservations.inventory_id', 'device_inventory.inventory_id')
+      .where('reservations.user_id', userId)
+      .where('users.is_deleted', false)
+      .where('devices.is_deleted', false)
+      .select(
+        'reservations.reservation_id',
+        'reservations.user_id',
+        'reservations.device_id',
+        'reservations.inventory_id',
+        'reservations.reserved_at',
+        'reservations.due_date',
+        'reservations.status',
+        'users.user_id as user_user_id',
+        'users.email',
+        'users.first_name',
+        'users.last_name',
+        'users.role',
+        'users.created_at as user_created_at',
+        'users.is_active',
+        'users.is_deleted as user_is_deleted',
+        'devices.device_id as device_device_id',
+        'devices.brand',
+        'devices.model',
+        'devices.category',
+        'devices.description',
+        'devices.default_loan_duration_days',
+        'devices.created_at as device_created_at',
+        'devices.is_deleted',
+        'device_inventory.inventory_id as inventory_inventory_id',
+        'device_inventory.device_id as inventory_device_id',
+        'device_inventory.serial_number',
+        'device_inventory.is_available',
+        'device_inventory.created_at as inventory_created_at'
+      )
+      .orderBy('reservations.reserved_at', 'desc')
+      .limit(pageSize)
+      .offset(offset);
+
+    return results;
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    const result = await db(this.tableName)
+      .join('users', 'reservations.user_id', 'users.user_id')
+      .join('devices', 'reservations.device_id', 'devices.device_id')
+      .where('reservations.user_id', userId)
+      .where('users.is_deleted', false)
+      .where('devices.is_deleted', false)
+      .count('* as count')
+      .first();
+
+    return parseInt((result as { count: string }).count, 10);
+  }
+
   async findByDeviceId(deviceId: string): Promise<any[]> {
     const results = await db(this.tableName)
       .join('users', 'reservations.user_id', 'users.user_id')

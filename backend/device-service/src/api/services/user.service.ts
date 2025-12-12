@@ -97,6 +97,34 @@ export class UserService {
             return ResponseHelper.error(error instanceof Error ? error.message : 'Failed to login');
         }
     }
+
+    async getCurrentUser(userId: string): Promise<ApiResponse<UserDto | null>> {
+        logger.debug('getCurrentUser called', { userId });
+        try {
+            if (!userId) {
+                logger.warn('getCurrentUser validation failed: userId is required');
+                return ResponseHelper.validationError('User ID is required');
+            }
+
+            const user = await userRepository.findById(userId, false);
+            if (!user) {
+                logger.warn('getCurrentUser: user not found', { userId });
+                return ResponseHelper.notFound('User not found');
+            }
+
+            // Don't return deleted or inactive users
+            if (user.isDeleted || !user.isActive) {
+                logger.warn('getCurrentUser: user is deleted or inactive', { userId, isDeleted: user.isDeleted, isActive: user.isActive });
+                return ResponseHelper.notFound('User not found');
+            }
+
+            logger.info('Current user retrieved successfully', { userId });
+            return ResponseHelper.success(user, 'Current user retrieved successfully');
+        } catch (error) {
+            logger.error('getCurrentUser failed', error, { userId });
+            return ResponseHelper.error(error instanceof Error ? error.message : 'Failed to retrieve current user');
+        }
+    }
 }
 
 export default new UserService();

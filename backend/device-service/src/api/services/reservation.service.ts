@@ -210,6 +210,88 @@ export class ReservationService {
     }
   }
 
+  async getMyReservations(userId: string, options: {
+    page?: number;
+    pageSize?: number;
+  } = {}): Promise<ApiResponse<PaginatedResult<ReservationWithDetailsDto> | null>> {
+    logger.debug('getMyReservations called', { userId, options });
+    try {
+      if (!userId) {
+        logger.warn('getMyReservations validation failed: userId is required');
+        return ResponseHelper.validationError('User ID is required');
+      }
+
+      const page = options.page || 1;
+      const pageSize = options.pageSize || 10;
+
+      // Get total count
+      const totalCount = await reservationRepository.countByUserId(userId);
+
+      // Get paginated results with joins
+      const results = await reservationRepository.findByUserIdWithPagination(userId, { page, pageSize });
+
+      const reservations: ReservationWithDetailsDto[] = results.map((row: any) => {
+        const reservation: ReservationTable = {
+          reservation_id: row.reservation_id,
+          user_id: row.user_id,
+          device_id: row.device_id,
+          inventory_id: row.inventory_id,
+          reserved_at: row.reserved_at,
+          due_date: row.due_date,
+          status: row.status,
+        };
+
+        const reservationDto = ReservationFactory.toDto(reservation);
+
+        return {
+          ...reservationDto,
+          user: {
+            email: row.email,
+            firstName: row.first_name,
+            lastName: row.last_name,
+            role: row.role,
+          },
+          device: {
+            brand: row.brand,
+            model: row.model,
+            category: row.category,
+          },
+          inventory: {
+            serialNumber: row.serial_number,
+            isAvailable: row.is_available,
+          },
+        };
+      });
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      const result: PaginatedResult<ReservationWithDetailsDto> = {
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+        data: reservations,
+      };
+
+      logger.info('My reservations retrieved successfully', {
+        userId,
+        count: reservations.length,
+        totalCount,
+        page,
+        pageSize,
+      });
+
+      return ResponseHelper.success(result, 'Reservations retrieved successfully');
+    } catch (error) {
+      logger.error('getMyReservations failed', error, { userId, options });
+      return ResponseHelper.error(error instanceof Error ? error.message : 'Failed to retrieve reservations');
+    }
+  }
+
 
 
 

@@ -51,6 +51,28 @@ export class ReservationController {
     const result = await reservationService.cancelReservation(userId, reservationId);
     return res.status(getStatusCode(result)).json(result);
   }
+
+  async getMyReservations(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        code: '06',
+        message: 'User not authenticated',
+        data: null,
+      });
+    }
+
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 10;
+
+    const options = {
+      page,
+      pageSize,
+    };
+
+    const result = await reservationService.getMyReservations(req.user.userId, options);
+    return res.status(getStatusCode(result)).json(result);
+  }
 }
 
 export default new ReservationController();

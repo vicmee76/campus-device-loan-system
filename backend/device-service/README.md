@@ -23,12 +23,23 @@ Device Service for the Campus Device Loan System. This service manages device in
 npm install
 ```
 
-2. Create a `.env` file based on `.env.example`:
-```bash
-cp .env.example .env
-```
+2. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-3. Update the `.env` file with your database credentials.
+   **Required Environment Variables:**
+   - `DATABASE_URL` - PostgreSQL connection string (e.g., `postgresql://user:password@host:port/database`)
+   - `JWT_SECRET` - Shared secret for JWT token generation (MUST match Loan Service)
+   - `JWT_EXPIRES_IN` - Token expiration time (e.g., `24h`)
+   - `PORT` - Service port (default: 7778)
+   - `NODE_ENV` - Environment (development, production, test)
+   - `CORS_ORIGIN` - Allowed CORS origin (default: `*`)
+   - `LOG_LEVEL` - Logging level: DEBUG, INFO, WARN, ERROR (default: DEBUG)
+
+   **Optional:**
+   - `SIMULATE_EMAIL_FAILURE` - Set to `true` to simulate email failures for testing
 
 4. **Important**: This service does NOT run migrations.
    - Migrations are located in the global `/database` folder at the project root

@@ -43,46 +43,9 @@ app.use((req, _res, next) => {
 import { defaultRateLimiter } from './api/utils/rate-limiter';
 app.use(defaultRateLimiter.middleware());
 
-// Health check endpoints
-import { checkHealth, checkReadiness } from './api/utils/health-check';
-
-app.get('/health', async (_req, res) => {
-  const health = await checkHealth();
-  const statusCode = health.status === 'healthy' ? 200 : 503;
-  res.status(statusCode).json(health);
-});
-
-app.get('/ready', async (_req, res) => {
-  const readiness = await checkReadiness();
-  const statusCode = readiness.ready ? 200 : 503;
-  res.status(statusCode).json(readiness);
-});
-
-// Metrics endpoint
-import { metrics } from './api/utils/metrics';
-app.get('/metrics', (_req, res) => {
-  const allMetrics = metrics.getMetrics();
-  const jobMetrics = metrics.getJobMetrics();
-  
-  res.status(200).json({
-    metrics: allMetrics.slice(-100), // Last 100 metrics
-    jobMetrics: jobMetrics.slice(-100), // Last 100 job metrics
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Alerts endpoint
-import { alertManager } from './api/utils/alerts';
-app.get('/alerts', (_req, res) => {
-  const activeAlerts = alertManager.getActiveAlerts();
-  const allAlerts = alertManager.getAllAlerts(50); // Last 50 alerts
-  
-  res.status(200).json({
-    active: activeAlerts,
-    recent: allAlerts,
-    timestamp: new Date().toISOString(),
-  });
-});
+// Health check routes (must be before other routes to avoid rate limiting)
+import healthRoutes from './api/routes/health.routes';
+app.use('/', healthRoutes);
 
 // Routes
 import userRoutes from './api/routes/user.routes';

@@ -17,6 +17,33 @@ export class LoanController {
     const result = await loanService.returnLoan(loanId);
     return res.status(getStatusCode(result)).json(result);
   }
+
+  async getAllLoans(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 10;
+
+    const options = {
+      page,
+      pageSize,
+    };
+
+    const result = await loanService.getAllLoans(options);
+    return res.status(getStatusCode(result)).json(result);
+  }
+
+  async getLoansByUserId(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    const { userId } = req.params;
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 10;
+
+    const options = {
+      page,
+      pageSize,
+    };
+
+    const result = await loanService.getLoansByUserId(userId, options);
+    return res.status(getStatusCode(result)).json(result);
+  }
 }
 
 export default new LoanController();
