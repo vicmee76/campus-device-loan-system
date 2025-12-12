@@ -1,7 +1,7 @@
 {
-  "name": "device-service",
+  "name": "loan-service",
   "version": "1.0.0",
-  "description": "Device Service for Campus Device Loan System",
+  "description": "Loan Service for Campus Device Loan System",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -15,14 +15,15 @@
     "test:coverage": "jest --coverage"
   },
   "keywords": [
-    "device",
+    "loan",
     "service",
     "campus",
-    "loan"
+    "device"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
