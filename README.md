@@ -70,7 +70,7 @@ Handles the loan lifecycle including checkouts, returns, overdue management, and
 - Loan history
 - Collections management
 
-**Status**: Foundation setup complete, business logic to be implemented
+**Status**: Fully implemented with loan collection, returns, and tracking
 
 ### [Database](./docs/database/database.md)
 
@@ -205,7 +205,7 @@ For comprehensive documentation including architecture details, API references, 
 ### Quick Links
 
 - **[📖 Documentation Hub](./docs/README.md)** - Central documentation index with detailed guides
-- **[🔌 API Reference](./docs/API_REFERENCE.md)** - Complete API documentation for all services
+- **[🔌 API Reference](./docs/backend/API.md)** - Complete API documentation for all services
 - [Device Service Documentation](./docs/backend/device-service.md) - Device service setup and usage
 - [Loan Service Documentation](./docs/backend/loan-service.md) - Loan service setup and usage
 - [Database Documentation](./docs/database/database.md) - Database migrations and seeds guide
@@ -234,23 +234,23 @@ The system uses JWT-based authentication:
 
 ## 📝 API Endpoints
 
-### Device Service (Port 7778)
+For complete API documentation including all endpoints, request/response formats, authentication requirements, and examples, see the **[API Reference](./docs/backend/API.md)**.
 
-- `POST /v1/api/users/login` - User authentication
-- `GET /v1/api/users/get-all-users` - List users (staff only)
-- `GET /v1/api/users/get-user-by-id/:id` - Get user by ID (staff only)
-- `GET /v1/api/devices/get-all-devices` - List all devices
-- `GET /v1/api/devices/get-device-by-id/:id` - Get device by ID
-- `GET /v1/api/devices/available-devices` - List available devices (students only)
-- `POST /v1/api/reservations/:deviceId/reserve` - Reserve a device (students only)
-- `PATCH /v1/api/reservations/:reservationId/cancel` - Cancel reservation
-- `GET /v1/api/reservations` - List reservations
-- `POST /v1/api/waitlist/:deviceId/join` - Join waitlist (students only)
-- `DELETE /v1/api/waitlist/:deviceId/remove` - Remove from waitlist
+### Quick Overview
 
-### Loan Service (Port 7779)
+**Device Service (Port 7778)**:
+- User authentication and management
+- Device catalog and inventory
+- Reservations and cancellations
+- Waitlist management
+- Health and monitoring endpoints
 
-Endpoints to be implemented.
+**Loan Service (Port 7779)**:
+- Loan collection and returns
+- Loan history and tracking
+- Health and monitoring endpoints
+
+All endpoints support pagination, comprehensive error handling, and role-based access control. See the [API Reference](./docs/backend/API.md) for detailed documentation.
 
 ## 🏛️ Architecture Patterns
 
@@ -264,7 +264,7 @@ Endpoints to be implemented.
 ## 📊 Project Status
 
 - ✅ Device Service - Fully implemented with tests
-- 🚧 Loan Service - Foundation ready, business logic in progress
+- ✅ Loan Service - Fully implemented with loan management and tracking
 - ⏳ Frontend - To be implemented
 - ⏳ Infrastructure - To be implemented
 
