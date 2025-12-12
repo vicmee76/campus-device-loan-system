@@ -12,11 +12,11 @@ export class ReservationController {
 
     const result = await reservationService.reserveDevice(userId, deviceId);
     
-    if (!result.success && result.message === 'No available devices for this model.') {
+    if (!result.success && result.message && result.message.includes('No available devices for this model')) {
       return res.status(409).json(result);
     }
 
-    return res.status(getStatusCode(result)).json(result);
+    return res.status(getStatusCode(result, 201)).json(result);
   }
 
   async getAllReservations(req: Request, res: Response): Promise<Response> {
@@ -41,6 +41,14 @@ export class ReservationController {
   async getReservationsByDeviceId(req: Request, res: Response): Promise<Response> {
     const { deviceId } = req.params;
     const result = await reservationService.getReservationsByDeviceId(deviceId);
+    return res.status(getStatusCode(result)).json(result);
+  }
+
+  async cancelReservation(req: AuthenticatedRequest, res: Response): Promise<Response> {
+    const { reservationId } = req.params;
+    const userId = req.user!.userId;
+
+    const result = await reservationService.cancelReservation(userId, reservationId);
     return res.status(getStatusCode(result)).json(result);
   }
 }

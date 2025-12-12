@@ -1,6 +1,4 @@
 import { PaginationMeta, PaginatedResult } from './user.dto';
-import { DeviceDto } from './device.dto';
-import { DeviceInventoryDto } from './device-inventory.dto';
 
 export interface ReservationDto {
   reservationId: string; // UUID
@@ -12,9 +10,28 @@ export interface ReservationDto {
   status: string;
 }
 
+export interface ReservationUserDetails {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'student' | 'staff';
+}
+
+export interface ReservationDeviceDetails {
+  brand: string;
+  model: string;
+  category: string;
+}
+
+export interface ReservationInventoryDetails {
+  serialNumber: string;
+  isAvailable: boolean;
+}
+
 export interface ReservationWithDetailsDto extends ReservationDto {
-  device: DeviceDto;
-  inventory: DeviceInventoryDto;
+  user: ReservationUserDetails;
+  device: ReservationDeviceDetails;
+  inventory: ReservationInventoryDetails;
 }
 
 export { PaginationMeta, PaginatedResult };
