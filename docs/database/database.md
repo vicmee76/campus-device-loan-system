@@ -86,3 +86,28 @@ The knexfile will automatically load this `.env` file from the database folder.
 3. Run migrations: `npx knex --knexfile database/knexfile.ts migrate:latest`
 4. Rollback if needed: `npx knex --knexfile database/knexfile.ts migrate:rollback`
 
+## Database Schema
+
+The database contains the following tables:
+
+- `users` - User accounts (students and staff)
+- `devices` - Device models (laptops, tablets, etc.)
+- `device_inventory` - Physical device units
+- `reservations` - Device reservations
+- `waitlist` - Waitlist entries for unavailable devices
+- `loans` - Loan records (created when device is collected)
+
+## Seed Data
+
+Seed files provide development data:
+
+- `01_devices.ts` - Sample device models
+- `02_users.ts` - Sample user accounts (staff and students)
+- `03_device_inventory.ts` - Sample inventory items
+
+## Related Documentation
+
+- [Main Project README](../../README.md) - Project overview
+- [Device Service](../backend/device-service.md) - Device service documentation
+- [Loan Service](../backend/loan-service.md) - Loan service documentation
+

@@ -37,11 +37,13 @@ campus-device-loan-system/
 - **Testing**: Jest, Supertest
 - **Architecture Patterns**: Repository Pattern, Factory Pattern, Dependency Injection (TSyringe)
 
+> 📖 **For detailed architecture documentation, API references, and component guides, see the [Documentation Hub](./docs/README.md)**
+
 ## 📁 Project Structure
 
 ### Backend Services
 
-#### [Device Service](./backend/device-service/README.md)
+#### [Device Service](./docs/backend/device-service.md)
 **Port**: 7778
 
 Manages the device catalog, inventory, reservations, waitlists, and user authentication.
@@ -56,7 +58,7 @@ Manages the device catalog, inventory, reservations, waitlists, and user authent
 
 **Entities**: Users, Devices, Device Inventory, Reservations, Waitlist
 
-#### [Loan Service](./backend/loan-service/README.md)
+#### [Loan Service](./docs/backend/loan-service.md)
 **Port**: 7779
 
 Handles the loan lifecycle including checkouts, returns, overdue management, and loan history.
@@ -70,7 +72,7 @@ Handles the loan lifecycle including checkouts, returns, overdue management, and
 
 **Status**: Foundation setup complete, business logic to be implemented
 
-### [Database](./database/README.md)
+### [Database](./docs/database/database.md)
 
 Shared PostgreSQL database with centralized migrations and seeds.
 
@@ -129,7 +131,7 @@ Architecture diagrams, NFRs, plans, and project documentation.
    cd backend/device-service
    npm install
    
-   # Create .env file (see device-service README for details)
+   # Create .env file (see [Device Service documentation](./docs/backend/device-service.md) for details)
    cp .env.example .env
    
    # Start the service
@@ -141,7 +143,7 @@ Architecture diagrams, NFRs, plans, and project documentation.
    cd backend/loan-service
    npm install
    
-   # Create .env file (see loan-service README for details)
+   # Create .env file (see [Loan Service documentation](./docs/backend/loan-service.md) for details)
    cp .env.example .env
    
    # Start the service
@@ -165,7 +167,7 @@ cd database
 npm run migrate:latest
 ```
 
-See [Database README](./database/README.md) for more details.
+See [Database documentation](./docs/database/database.md) for more details.
 
 ### Environment Variables
 
@@ -198,10 +200,15 @@ npm run test:integration
 
 ## 📚 Documentation
 
-- [Device Service README](./backend/device-service/README.md) - Device service documentation
-- [Loan Service README](./backend/loan-service/README.md) - Loan service documentation
-- [Database README](./database/README.md) - Database migrations and seeds guide
-- [Docs](./docs/) - Architecture diagrams and project documentation
+For comprehensive documentation including architecture details, API references, and detailed component guides, see the **[Documentation Hub](./docs/README.md)**.
+
+### Quick Links
+
+- **[📖 Documentation Hub](./docs/README.md)** - Central documentation index with detailed guides
+- **[🔌 API Reference](./docs/API_REFERENCE.md)** - Complete API documentation for all services
+- [Device Service Documentation](./docs/backend/device-service.md) - Device service setup and usage
+- [Loan Service Documentation](./docs/backend/loan-service.md) - Loan service setup and usage
+- [Database Documentation](./docs/database/database.md) - Database migrations and seeds guide
 
 ## 🔐 Authentication
 

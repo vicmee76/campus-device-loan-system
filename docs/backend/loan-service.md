@@ -47,7 +47,7 @@ curl -X POST http://localhost:7778/v1/api/users/login \
 
 # 2. Use the token to call Loan Service
 curl -H "Authorization: Bearer <token-from-device-service>" \
-  http://localhost:7779/v1/api/loans
+  http://localhost:7779/v1/api/loans/get-all-loans
 ```
 
 ### Token Validation Flow
@@ -118,7 +118,20 @@ Default port: **7779** (Device Service uses 7778)
 
 ## API Endpoints
 
-Endpoints will be documented here as they are implemented.
+See [API Reference](../API_REFERENCE.md) for complete endpoint documentation.
+
+### Health & Monitoring
+
+- `GET /health` - Liveness probe (service is running)
+- `GET /ready` - Readiness probe (database is reachable)
+- `GET /metrics` - Prometheus-style metrics
+
+### Loan Management
+
+- `PATCH /v1/api/loans/:reservationId/collect` - Mark reservation as collected and create loan (staff only)
+- `PATCH /v1/api/loans/:loanId/return` - Mark loan as returned and update inventory (staff only)
+- `GET /v1/api/loans/get-all-loans` - Get all loans with pagination (staff only)
+- `GET /v1/api/loans/user/:userId` - Get loans for a specific user (staff only)
 
 ## Architecture
 
@@ -132,3 +145,26 @@ Endpoints will be documented here as they are implemented.
 ## Testing
 
 See `src/test/README.md` for testing documentation.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run integration tests only
+npm run test:integration
+
+# Run with coverage
+npm run test:coverage
+```
+
+## Related Documentation
+
+- [API Reference](../API_REFERENCE.md) - Complete API documentation
+- [Main Project README](../../README.md) - Project overview
+- [Database Guide](../database/database.md) - Database migrations and seeds
+
