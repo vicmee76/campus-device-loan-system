@@ -39,11 +39,8 @@ export class RateLimiter {
         return next();
       }
 
-      // Increment count
-      record.count++;
-
-      // Check if limit exceeded
-      if (record.count > this.options.maxRequests) {
+      // Check if limit already exceeded before incrementing
+      if (record.count >= this.options.maxRequests) {
         const retryAfter = Math.ceil((record.resetTime - now) / 1000);
         logger.warn('Rate limit exceeded', {
           key,
@@ -61,6 +58,9 @@ export class RateLimiter {
         });
         return;
       }
+
+      // Increment count only if within limit
+      record.count++;
 
       // Track response status if needed
       if (this.options.skipSuccessfulRequests || this.options.skipFailedRequests) {
@@ -94,9 +94,23 @@ export class RateLimiter {
       return this.options.keyGenerator(req);
     }
 
-    // Default: use IP address or user ID if authenticated
+    // Include endpoint (method + path) in the key for per-endpoint rate limiting
+    const endpoint = `${req.method}:${req.path}`;
+    
+    // Default: use user ID if authenticated, otherwise IP address
     const userId = (req as any).user?.userId;
-    return userId || req.ip || req.socket.remoteAddress || 'unknown';
+    if (userId) {
+      return `user:${userId}:${endpoint}`;
+    }
+
+    // Try to get IP from various sources (handles proxy scenarios)
+    const ip = req.ip || 
+               (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+               (req.headers['x-real-ip'] as string) ||
+               req.socket.remoteAddress ||
+               'unknown';
+    
+    return `ip:${ip}:${endpoint}`;
   }
 
   private cleanup(): void {
@@ -119,13 +133,14 @@ export const createRateLimiter = (options: RateLimitOptions) => {
 };
 
 // Common rate limiters
+// Per-endpoint rate limiting: limits rapid requests to the same endpoint
 export const defaultRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // 100 requests per 15 minutes
+  windowMs: 60 * 1000, // 1 minute window
+  maxRequests: 100, // 100 requests per minute per endpoint (prevents rapid/constant requests)
 });
 
 export const strictRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 10, // 10 requests per minute
+  maxRequests: 10, // 10 requests per minute per endpoint
 });
 

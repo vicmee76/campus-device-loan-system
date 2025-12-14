@@ -1,5 +1,11 @@
 import type { Knex } from 'knex';
-import { hashPassword } from '../../api/utils/password.utils';
+import bcrypt from 'bcrypt';
+
+const SALT_ROUNDS = 10;
+
+const hashPassword = async (password: string): Promise<string> => {
+  return await bcrypt.hash(password, SALT_ROUNDS);
+};
 
 export async function seed(knex: Knex): Promise<void> {
     // Deletes ALL existing entries

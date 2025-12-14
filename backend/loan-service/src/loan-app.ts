@@ -22,6 +22,9 @@ const corsOptions = {
   exposedHeaders: ['X-Correlation-ID'],
 };
 
+// Trust proxy for correct IP address extraction (important for rate limiting)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(cors(corsOptions));
 app.use(helmet({
