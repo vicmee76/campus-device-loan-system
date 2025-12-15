@@ -122,6 +122,18 @@ describe('LoanService - Unit Tests', () => {
       expect(result.success).toBe(false);
       expect(result.code).toBe('06');
     });
+
+    it('should handle non-Error objects thrown during collection', async () => {
+      mockReservationRepoInstance.getReservation.mockResolvedValue(mockReservation);
+      mockLoanRepoInstance.findByReservationId.mockResolvedValue(undefined);
+      mockLoanRepoInstance.createLoan.mockRejectedValue('String error');
+
+      const result = await loanService.collect(mockReservationId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+      expect(result.message).toBe('Failed to collect loan');
+    });
   });
 
   describe('returnLoan', () => {
@@ -198,6 +210,16 @@ describe('LoanService - Unit Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.code).toBe('06');
+    });
+
+    it('should handle non-Error objects thrown during return', async () => {
+      mockLoanRepoInstance.findLoanWithReservation.mockRejectedValue({ code: 'DB_ERROR', message: 'Database connection lost' });
+
+      const result = await loanService.returnLoan(mockLoanId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+      expect(result.message).toBe('Failed to return loan');
     });
   });
 
@@ -298,6 +320,16 @@ describe('LoanService - Unit Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.code).toBe('06');
+    });
+
+    it('should handle non-Error objects thrown during getAllLoans', async () => {
+      mockLoanRepoInstance.countAll.mockRejectedValue(null);
+
+      const result = await loanService.getAllLoans();
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+      expect(result.message).toBe('Failed to retrieve loans');
     });
   });
 
@@ -407,6 +439,16 @@ describe('LoanService - Unit Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.code).toBe('06');
+    });
+
+    it('should handle non-Error objects thrown during getLoansByUserId', async () => {
+      mockLoanRepoInstance.countByUserId.mockRejectedValue(123);
+
+      const result = await loanService.getLoansByUserId(mockUserId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+      expect(result.message).toBe('Failed to retrieve loans');
     });
   });
 });

@@ -894,7 +894,7 @@ export default function StaffDashboardPage() {
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="p-6">
                 <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Device Details</h2>
+                  <h2 className="text-lg font-bold text-gray-900">Device Details</h2>
                   <button
                     onClick={() => setShowDeviceDetailsModal(false)}
                     className="text-gray-400 hover:text-gray-600"
@@ -906,44 +906,44 @@ export default function StaffDashboardPage() {
                 </div>
 
                 <div className="mb-6 pb-6 border-b border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Device Information</h3>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Device Information</h3>
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <p className="text-xs text-gray-500">Brand</p>
-                      <p className="text-lg font-semibold text-gray-900">{selectedDevice.brand}</p>
+                      <p className="text-[10px] text-gray-500">Brand</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedDevice.brand}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Model</p>
-                      <p className="text-lg font-semibold text-gray-900">{selectedDevice.model}</p>
+                      <p className="text-[10px] text-gray-500">Model</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedDevice.model}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Category</p>
-                      <p className="text-sm text-gray-700">{selectedDevice.category}</p>
+                      <p className="text-[10px] text-gray-500">Category</p>
+                      <p className="text-xs text-gray-700">{selectedDevice.category}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Device ID</p>
-                      <p className="text-xs text-gray-700 font-mono">{selectedDevice.deviceId}</p>
+                      <p className="text-[10px] text-gray-500">Device ID</p>
+                      <p className="text-[10px] text-gray-700 font-mono">{selectedDevice.deviceId}</p>
                     </div>
                   </div>
                 </div>
 
                 {selectedDevice.description && (
                   <div className="mb-6 pb-6 border-b border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Description</h3>
-                    <p className="text-sm text-gray-700">{selectedDevice.description}</p>
+                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Description</h3>
+                    <p className="text-xs text-gray-700">{selectedDevice.description}</p>
                   </div>
                 )}
 
                 {selectedDevice.specifications && (
                   <div className="mb-6 pb-6 border-b border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Specifications</h3>
-                    <p className="text-sm text-gray-700">{selectedDevice.specifications}</p>
+                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Specifications</h3>
+                    <p className="text-xs text-gray-700">{selectedDevice.specifications}</p>
                   </div>
                 )}
 
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Created</p>
-                  <p className="text-sm text-gray-700">{format(new Date(selectedDevice.createdAt), 'PPp')}</p>
+                  <p className="text-[10px] text-gray-500 mb-1">Created</p>
+                  <p className="text-xs text-gray-700">{format(new Date(selectedDevice.createdAt), 'PPp')}</p>
                 </div>
               </div>
             </div>

@@ -152,6 +152,15 @@ describe('DeviceInventoryService - Unit Tests', () => {
       expect(result.code).toBe('09');
       expect(mockDeviceInventoryRepository.findById).not.toHaveBeenCalled();
     });
+
+    it('should handle errors gracefully', async () => {
+      mockDeviceInventoryRepository.findById.mockRejectedValue(new Error('Database error'));
+
+      const result = await deviceInventoryService.getInventoryById(mockInventoryId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('06');
+    });
   });
 });
 

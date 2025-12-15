@@ -3,9 +3,11 @@
   "compilerOptions": {
     "types": ["node", "jest"],
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/test/**/*"],
   "exclude": ["node_modules", "dist"]
 }
 

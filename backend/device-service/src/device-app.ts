@@ -24,7 +24,10 @@ app.set('trust proxy', true);
 // Middleware
 app.use(cors(corsOptions));
 app.use(helmet());
-app.use(morgan('combined'));
+// Disable morgan logging in test environment to reduce test output noise
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
