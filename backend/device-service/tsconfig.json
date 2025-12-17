@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
-    "types": ["node", "jest"],
+    "types": ["node"],
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -19,13 +19,20 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*", "src/database/knexfile.ts"],
+  "include": [
+    "src/**/*",
+    "src/database/knexfile.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",
-    "src/test",
+    "**/test/**",
+    "**/__tests__/**",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/test/**/*",
+    "src/test/**/*"
   ]
 }
-
