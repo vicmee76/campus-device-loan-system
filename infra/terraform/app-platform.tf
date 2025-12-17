@@ -1,6 +1,6 @@
-resource "digitalocean_app" "platform" {
+resource "digitalocean_app" "device_service" {
   spec {
-    name   = "campus-device-loan-${var.environment}"
+    name   = "campus-device-service-${var.environment}"
     region = var.region
 
     service {
@@ -16,7 +16,7 @@ resource "digitalocean_app" "platform" {
 
       build_command = "cd backend/device-service && npm install && npm run build"
       run_command   = "cd backend/device-service && npm start"
-      source_dir    = "/"
+      source_dir    = "backend/device-service"
 
       env {
         key   = "NODE_ENV"
@@ -49,6 +49,13 @@ resource "digitalocean_app" "platform" {
         path = "/"
       }
     }
+  }
+}
+
+resource "digitalocean_app" "loan_service" {
+  spec {
+    name   = "campus-loan-service-${var.environment}"
+    region = var.region
 
     service {
       name               = "loan-service"
@@ -63,7 +70,7 @@ resource "digitalocean_app" "platform" {
 
       build_command = "cd backend/loan-service && npm install && npm run build"
       run_command   = "cd backend/loan-service && npm start"
-      source_dir    = "/"
+      source_dir    = "backend/loan-service"
 
       env {
         key   = "NODE_ENV"
@@ -102,6 +109,7 @@ resource "digitalocean_app" "platform" {
 resource "digitalocean_project_resources" "main" {
   project = digitalocean_project.main.id
   resources = [
-    digitalocean_app.platform.urn
+    digitalocean_app.device_service.urn,
+    digitalocean_app.loan_service.urn
   ]
 }
