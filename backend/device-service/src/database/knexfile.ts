@@ -1,26 +1,27 @@
 import type { Knex } from "knex";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-// SSL configuration for Aiven PostgreSQL (private CA)
-// rejectUnauthorized: false allows self-signed certificates from Aiven's private CA
-const sslConfig = {
-  rejectUnauthorized: false
-};
+// Force NODE_TLS_REJECT_UNAUTHORIZED=0 to allow self-signed certificates
+// This is safe for Aiven PostgreSQL with private CA
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: "pg",
-    connection: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: sslConfig
+    connection: process.env.DATABASE_URL,
+    pool: {
+      min: 2,
+      max: 10
     }
   },
   production: {
     client: "pg",
-    connection: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: sslConfig
+    connection: process.env.DATABASE_URL,
+    pool: {
+      min: 2,
+      max: 10
     }
   }
 };
