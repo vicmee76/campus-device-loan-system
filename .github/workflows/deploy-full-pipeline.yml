@@ -79,7 +79,22 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          DEVICE_COUNT=$(node -e "const { Client } = require('pg'); const client = new Client({ connectionString: process.env.DATABASE_URL }); client.connect().then(() => client.query('SELECT COUNT(*) as count FROM devices')).then(r => { console.log(r.rows[0].count); client.end(); }).catch(e => { console.log('0'); client.end(); });" || echo "0")
+          cat > check-empty.js << 'SCRIPT_EOF'
+          require('ts-node/register');
+          const config = require('./knexfile.ts').default;
+          const knex = require('knex');
+          const db = knex(config.production || config.development);
+          db('devices').count('* as count').first()
+            .then(r => { 
+              console.log(r.count); 
+              db.destroy(); 
+            })
+            .catch(e => { 
+              console.log('0'); 
+              db.destroy(); 
+            });
+          SCRIPT_EOF
+          DEVICE_COUNT=$(node check-empty.js || echo "0")
           echo "DEVICE_COUNT=$DEVICE_COUNT" >> $GITHUB_ENV
 
       - name: Run seeds if database is empty
