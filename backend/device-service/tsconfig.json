@@ -20,6 +20,12 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*", "src/database/knexfile.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/test",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
 
