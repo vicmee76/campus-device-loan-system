@@ -72,6 +72,7 @@ jobs:
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run migrate:latest
 
       - name: Check if database is empty
