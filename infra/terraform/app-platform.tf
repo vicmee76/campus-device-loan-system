@@ -1,23 +1,35 @@
-resource "digitalocean_app" "device_service" {
-  count = var.apps_exist ? 0 : 1
-
+# Backend App Platform - Single app with two services (device-service and loan-service)
+resource "digitalocean_app" "backend" {
   spec {
-    name   = "campus-device-service-${var.environment}"
+    name   = "campus-device-loan-backend"
     region = var.region
 
+    # Path-based routing: /device → device-service, /loan → loan-service
     ingress {
       rule {
         match {
           path {
-            prefix = "/"
+            prefix = "/device"
           }
         }
         component {
           name = "device-service"
         }
       }
+
+      rule {
+        match {
+          path {
+            prefix = "/loan"
+          }
+        }
+        component {
+          name = "loan-service"
+        }
+      }
     }
 
+    # Device Service
     service {
       name               = "device-service"
       instance_count     = 1
@@ -55,29 +67,8 @@ resource "digitalocean_app" "device_service" {
         failure_threshold     = 3
       }
     }
-  }
-}
 
-resource "digitalocean_app" "loan_service" {
-  count = var.apps_exist ? 0 : 1
-
-  spec {
-    name   = "campus-loan-service-${var.environment}"
-    region = var.region
-
-    ingress {
-      rule {
-        match {
-          path {
-            prefix = "/"
-          }
-        }
-        component {
-          name = "loan-service"
-        }
-      }
-    }
-
+    # Loan Service
     service {
       name               = "loan-service"
       instance_count     = 1
@@ -118,10 +109,20 @@ resource "digitalocean_app" "loan_service" {
   }
 }
 
+# Attach backend and frontend apps to the project
 resource "digitalocean_project_resources" "main" {
   project = local.project_id
-  resources = var.apps_exist ? [] : [
-    digitalocean_app.device_service[0].urn,
-    digitalocean_app.loan_service[0].urn
+  resources = [
+    digitalocean_app.backend.urn,
+    digitalocean_app.frontend.urn
+  ]
+}
+
+# Attach backend and frontend apps to the project
+resource "digitalocean_project_resources" "main" {
+  project = local.project_id
+  resources = [
+    digitalocean_app.backend.urn,
+    digitalocean_app.frontend.urn
   ]
 }

@@ -1,8 +1,8 @@
 resource "digitalocean_project" "main" {
-  name        = "campus-device-loan-${var.environment}"
-  description = "Campus Device Loan System - ${var.environment}"
+  name        = "campus-device-loan"
+  description = "Campus Device Loan System"
   purpose     = "Web Application"
-  environment = var.environment == "prod" ? "Production" : "Development"
+  environment = "Production"
 }
 
 locals {
