@@ -57,7 +57,7 @@ jobs:
 
 
 # =========================================================
-# 2️⃣ DATABASE – Migrations & Seeds
+# 2️⃣ DATABASE – Migrations & Deterministic Seeding
 # =========================================================
   database:
     name: Database Setup
@@ -85,47 +85,43 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run migrate:latest
 
-      # ---- Check if devices table is empty (Knex + SSL) ----
-      - name: Check if database is empty
+      # ---- Seed database IF EMPTY (single source of truth) ----
+      - name: Seed database if empty
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: |
-          cat > check-empty.js << 'SCRIPT_EOF'
+          cat > seed-if-empty.js << 'SCRIPT_EOF'
           require('ts-node/register');
           const config = require('./knexfile.ts').default;
           const knex = require('knex');
+          const { execSync } = require('child_process');
 
           const db = knex(config.production || config.development);
 
-          db('devices').count('* as count').first()
-            .then(r => {
-              const count = Number(r.count || 0);
-              console.log(count);
-              db.destroy();
-            })
-            .catch(() => {
-              console.log(0);
-              db.destroy();
-            });
+          async function run() {
+            const result = await db('devices').count('* as count').first();
+            const count = Number(result.count || 0);
+
+            if (count === 0) {
+              console.log('Database empty → running seeds');
+              execSync('npm run seed', { stdio: 'inherit' });
+            } else {
+              console.log('Database already seeded → skipping');
+            }
+
+            await db.destroy();
+          }
+
+          run().catch(async (e) => {
+            console.error(e);
+            await db.destroy();
+            process.exit(1);
+          });
           SCRIPT_EOF
 
-          DEVICE_COUNT=$(node check-empty.js | tr -d '\n' | tr -d '\r')
-          echo "DEVICE_COUNT=${DEVICE_COUNT}" >> "$GITHUB_ENV"
-
-      # ---- Run seeds ONLY if DB is empty ----
-      - name: Run seeds if database is empty
-        if: env.DEVICE_COUNT == '0'
-        working-directory: database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
-        run: npm run seed
-
-      - name: Skip seeds if database is not empty
-        if: env.DEVICE_COUNT != '0'
-        run: echo "Database already seeded — skipping"
+          node seed-if-empty.js
 
 
 # =========================================================
@@ -246,4 +242,4 @@ jobs:
         run: npm run build
 
       - name: Deploy frontend
-        run: echo "Frontend deployment step — configure target hosting"
+        run: echo "Frontend deployment step — configure hosting target"
