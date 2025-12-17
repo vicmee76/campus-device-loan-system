@@ -37,6 +37,7 @@ jobs:
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run migrate:latest
 
       # ---- Seed database IF EMPTY (single source of truth) ----
@@ -44,6 +45,7 @@ jobs:
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: |
           cat > seed-if-empty.js << 'SCRIPT_EOF'
           require('ts-node/register');
@@ -106,6 +108,7 @@ jobs:
         working-directory: backend/device-service
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run test:integration
 
       - name: Build project
@@ -149,6 +152,7 @@ jobs:
         working-directory: backend/loan-service
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run test:integration
 
       - name: Build project
