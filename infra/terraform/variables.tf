@@ -1,9 +1,3 @@
-variable "digitalocean_token" {
-  description = "DigitalOcean API token"
-  type        = string
-  sensitive   = true
-}
-
 variable "github_repo_url" {
   description = "GitHub repository URL for source code (format: owner/repo)"
   type        = string
