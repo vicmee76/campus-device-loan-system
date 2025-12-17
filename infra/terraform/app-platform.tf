@@ -1,4 +1,6 @@
 resource "digitalocean_app" "device_service" {
+  count = var.apps_exist ? 0 : 1
+
   spec {
     name   = "campus-device-service-${var.environment}"
     region = var.region
@@ -57,6 +59,8 @@ resource "digitalocean_app" "device_service" {
 }
 
 resource "digitalocean_app" "loan_service" {
+  count = var.apps_exist ? 0 : 1
+
   spec {
     name   = "campus-loan-service-${var.environment}"
     region = var.region
@@ -116,8 +120,8 @@ resource "digitalocean_app" "loan_service" {
 
 resource "digitalocean_project_resources" "main" {
   project = local.project_id
-  resources = [
-    digitalocean_app.device_service.urn,
-    digitalocean_app.loan_service.urn
+  resources = var.apps_exist ? [] : [
+    digitalocean_app.device_service[0].urn,
+    digitalocean_app.loan_service[0].urn
   ]
 }

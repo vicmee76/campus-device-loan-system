@@ -32,3 +32,9 @@ variable "create_project" {
   type        = bool
   default     = false
 }
+
+variable "apps_exist" {
+  description = "Set to true if apps already exist in DigitalOcean (will skip creation and require import). Set to false to create new apps."
+  type        = bool
+  default     = true
+}
