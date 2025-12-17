@@ -23,7 +23,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform init
 
@@ -31,7 +31,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform validate
 
@@ -39,7 +39,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform plan -out=tfplan
 
@@ -47,11 +47,11 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform apply -auto-approve tfplan
 
-  database-setup:
+  database:
     name: Database Setup
     runs-on: ubuntu-latest
     needs: terraform
@@ -96,7 +96,7 @@ jobs:
   device-service:
     name: Device Service
     runs-on: ubuntu-latest
-    needs: database-setup
+    needs: database
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -129,7 +129,7 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ secrets.DIGITALOCEAN_APP_ID }}/deployments
+            https://api.digitalocean.com/v2/apps/${{ secrets.DEVICE_APP_ID }}/deployments
 
   loan-service:
     name: Loan Service
@@ -167,7 +167,7 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ secrets.DIGITALOCEAN_APP_ID }}/deployments
+            https://api.digitalocean.com/v2/apps/${{ secrets.LOAN_APP_ID }}/deployments
 
   frontend:
     name: Frontend
