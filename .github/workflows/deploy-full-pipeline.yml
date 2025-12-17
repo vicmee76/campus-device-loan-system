@@ -23,7 +23,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ secrets.GITHUB_REPO_URL }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform init
 
@@ -31,7 +31,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ secrets.GITHUB_REPO_URL }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform validate
 
@@ -39,7 +39,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ secrets.GITHUB_REPO_URL }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform plan -out=tfplan
 
@@ -47,7 +47,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_github_repo_url: ${{ secrets.GITHUB_REPO_URL }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform apply -auto-approve tfplan
 
