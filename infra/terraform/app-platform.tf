@@ -3,10 +3,24 @@ resource "digitalocean_app" "device_service" {
     name   = "campus-device-service-${var.environment}"
     region = var.region
 
+    ingress {
+      rule {
+        match {
+          path {
+            prefix = "/"
+          }
+        }
+        component {
+          name = "device-service"
+        }
+      }
+    }
+
     service {
       name               = "device-service"
       instance_count     = 1
       instance_size_slug = "basic-xxs"
+      source_dir         = "backend/device-service"
 
       github {
         repo           = var.github_repo_url
@@ -14,18 +28,12 @@ resource "digitalocean_app" "device_service" {
         deploy_on_push = true
       }
 
-      build_command = "cd backend/device-service && npm install && npm run build"
-      run_command   = "cd backend/device-service && npm start"
-      source_dir    = "backend/device-service"
+      build_command = "npm install && npm run build"
+      run_command   = "npm start"
 
       env {
         key   = "NODE_ENV"
         value = "production"
-      }
-
-      env {
-        key   = "PORT"
-        value = "7778"
       }
 
       env {
@@ -34,7 +42,7 @@ resource "digitalocean_app" "device_service" {
         type  = "SECRET"
       }
 
-      http_port = 7778
+      http_port = 8080
 
       health_check {
         http_path             = "/health"
@@ -43,10 +51,6 @@ resource "digitalocean_app" "device_service" {
         timeout_seconds       = 3
         success_threshold     = 1
         failure_threshold     = 3
-      }
-
-      routes {
-        path = "/"
       }
     }
   }
@@ -57,10 +61,24 @@ resource "digitalocean_app" "loan_service" {
     name   = "campus-loan-service-${var.environment}"
     region = var.region
 
+    ingress {
+      rule {
+        match {
+          path {
+            prefix = "/"
+          }
+        }
+        component {
+          name = "loan-service"
+        }
+      }
+    }
+
     service {
       name               = "loan-service"
       instance_count     = 1
       instance_size_slug = "basic-xxs"
+      source_dir         = "backend/loan-service"
 
       github {
         repo           = var.github_repo_url
@@ -68,18 +86,12 @@ resource "digitalocean_app" "loan_service" {
         deploy_on_push = true
       }
 
-      build_command = "cd backend/loan-service && npm install && npm run build"
-      run_command   = "cd backend/loan-service && npm start"
-      source_dir    = "backend/loan-service"
+      build_command = "npm install && npm run build"
+      run_command   = "npm start"
 
       env {
         key   = "NODE_ENV"
         value = "production"
-      }
-
-      env {
-        key   = "PORT"
-        value = "7779"
       }
 
       env {
@@ -88,7 +100,7 @@ resource "digitalocean_app" "loan_service" {
         type  = "SECRET"
       }
 
-      http_port = 7779
+      http_port = 8080
 
       health_check {
         http_path             = "/health"
@@ -98,16 +110,12 @@ resource "digitalocean_app" "loan_service" {
         success_threshold     = 1
         failure_threshold     = 3
       }
-
-      routes {
-        path = "/"
-      }
     }
   }
 }
 
 resource "digitalocean_project_resources" "main" {
-  project = digitalocean_project.main.id
+  project = local.project_id
   resources = [
     digitalocean_app.device_service.urn,
     digitalocean_app.loan_service.urn

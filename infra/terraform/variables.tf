@@ -5,7 +5,7 @@ variable "digitalocean_token" {
 }
 
 variable "github_repo_url" {
-  description = "GitHub repository URL for source code"
+  description = "GitHub repository URL for source code (format: owner/repo)"
   type        = string
 }
 
@@ -25,4 +25,10 @@ variable "region" {
   description = "DigitalOcean region"
   type        = string
   default     = "nyc3"
+}
+
+variable "create_project" {
+  description = "Whether to create a new DigitalOcean project. Set to false if project already exists."
+  type        = bool
+  default     = false
 }
