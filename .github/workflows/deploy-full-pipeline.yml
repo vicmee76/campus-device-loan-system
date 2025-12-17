@@ -8,14 +8,8 @@ on:
 
 jobs:
 # =========================================================
-<<<<<<< Updated upstream
-# Infrastructure Note:
-# Terraform is managed locally only (not in CI/CD)
-# Run: cd infra/terraform && terraform init/plan/apply
-=======
 # Infrastructure managed by DigitalOcean App Platform
 # Auto-deploys on push to main
->>>>>>> Stashed changes
 # =========================================================
 
 # =========================================================
