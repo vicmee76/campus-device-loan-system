@@ -1,15 +1,10 @@
 terraform {
   required_version = ">= 1.0"
 
-  # Remote state backend: Terraform Cloud
-  # This ensures state is shared between local development and CI/CD
-  # State is stored remotely, preventing "resource already exists" errors
-  cloud {
-    organization = "vdn-org"  # Replace with your Terraform Cloud organization name
-    workspaces {
-      name = "production"
-    }
-  }
+  # Local state backend (default)
+  # Terraform state is stored locally in terraform.tfstate
+  # This is acceptable for single-developer projects
+  # Infrastructure is managed locally, not in CI/CD
 
   required_providers {
     digitalocean = {
@@ -20,5 +15,6 @@ terraform {
 }
 
 # DigitalOcean provider uses DIGITALOCEAN_TOKEN environment variable
-# This is set in GitHub Actions secrets and locally via export
+# Set locally via: export DIGITALOCEAN_TOKEN="your-token"
+# No Terraform variables needed for authentication
 provider "digitalocean" {}
