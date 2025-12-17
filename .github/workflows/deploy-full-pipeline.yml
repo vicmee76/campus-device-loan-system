@@ -1,0 +1,198 @@
+name: Full Deployment Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.x
+
+      - name: Terraform Init
+        working-directory: infra/terraform
+        env:
+          TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: infra/terraform
+        env:
+          TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo_url: ${{ github.repository }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        run: terraform apply -auto-approve tfplan
+
+  database-setup:
+    name: Database Setup
+    runs-on: ubuntu-latest
+    needs: terraform
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install database dependencies
+        working-directory: database
+        run: npm install
+
+      - name: Run migrations
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run migrate:latest
+
+      - name: Check if database is empty
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          DEVICE_COUNT=$(node -e "const { Client } = require('pg'); const client = new Client({ connectionString: process.env.DATABASE_URL }); client.connect().then(() => client.query('SELECT COUNT(*) as count FROM devices')).then(r => { console.log(r.rows[0].count); client.end(); }).catch(e => { console.log('0'); client.end(); });" || echo "0")
+          echo "DEVICE_COUNT=$DEVICE_COUNT" >> $GITHUB_ENV
+
+      - name: Run seeds if database is empty
+        if: env.DEVICE_COUNT == '0'
+        working-directory: database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run seed
+
+      - name: Skip seeds if database is not empty
+        if: env.DEVICE_COUNT != '0'
+        run: echo "Database is not empty, skipping seeds"
+
+  device-service:
+    name: Device Service
+    runs-on: ubuntu-latest
+    needs: database-setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: backend/device-service
+        run: npm install
+
+      - name: Run unit tests
+        working-directory: backend/device-service
+        run: npm run test:unit
+
+      - name: Run integration tests
+        working-directory: backend/device-service
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run test:integration
+
+      - name: Build project
+        working-directory: backend/device-service
+        run: npm run build
+
+      - name: Trigger DigitalOcean deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/${{ secrets.DIGITALOCEAN_APP_ID }}/deployments
+
+  loan-service:
+    name: Loan Service
+    runs-on: ubuntu-latest
+    needs: device-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: backend/loan-service
+        run: npm install
+
+      - name: Run unit tests
+        working-directory: backend/loan-service
+        run: npm run test:unit
+
+      - name: Run integration tests
+        working-directory: backend/loan-service
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run test:integration
+
+      - name: Build project
+        working-directory: backend/loan-service
+        run: npm run build
+
+      - name: Trigger DigitalOcean deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/${{ secrets.DIGITALOCEAN_APP_ID }}/deployments
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    needs: loan-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Run tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build Next.js app
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy frontend
+        run: echo "Frontend deployment step - configure based on deployment target"

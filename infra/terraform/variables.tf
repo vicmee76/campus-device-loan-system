@@ -1,51 +1,18 @@
-variable "subscription_id" {
-  description = "Azure subscription ID (optional - will use default from Azure CLI if not provided)"
-  type        = string
-  default     = null
-}
-
-variable "location" {
-  description = "Azure region for resources"
-  type        = string
-  default     = "West Europe"
-}
-
-variable "resource_group_name" {
-  description = "Name of the Azure Resource Group"
-  type        = string
-  default     = "campus-device-loan-rg"
-}
-
-variable "db_admin_user" {
-  description = "PostgreSQL administrator username"
+variable "digitalocean_token" {
+  description = "DigitalOcean API token"
   type        = string
   sensitive   = true
 }
 
-variable "db_admin_password" {
-  description = "PostgreSQL administrator password"
+variable "github_repo_url" {
+  description = "GitHub repository URL for source code"
   type        = string
-  sensitive   = true
-}
-
-variable "db_name" {
-  description = "Name of the PostgreSQL database"
-  type        = string
-  default     = "campus_device_loan"
 }
 
 variable "database_url" {
-  description = "Full database connection URL (sensitive)"
+  description = "External database connection URL (sensitive - database is managed outside Terraform)"
   type        = string
   sensitive   = true
-}
-
-
-
-variable "cors_origin" {
-  description = "CORS origin for API services (use * for all or specific domain)"
-  type        = string
-  default     = "*"
 }
 
 variable "environment" {
@@ -54,13 +21,8 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default = {
-    Project     = "Campus Device Loan System"
-    ManagedBy   = "Terraform"
-    Environment = "dev"
-  }
+variable "region" {
+  description = "DigitalOcean region"
+  type        = string
+  default     = "nyc3"
 }
-
