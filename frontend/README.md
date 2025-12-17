@@ -108,10 +108,12 @@ All API calls are made through client utilities in `lib/api/` that automatically
 
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first CSS framework
+- **Tailwind CSS** - Utility-first CSS framework (in `dependencies` for production builds)
 - **Axios** - HTTP client
 - **js-cookie** - Cookie management
 - **date-fns** - Date formatting
+- **Jest** - Testing framework
+- **React Testing Library** - Component testing
 
 ## Development
 
@@ -134,6 +136,43 @@ npm run lint
 - `NEXT_PUBLIC_DEVICE_SERVICE_URL` - Device service base URL (default: http://localhost:7778)
 - `NEXT_PUBLIC_LOAN_SERVICE_URL` - Loan service base URL (default: http://localhost:7779)
 
+## Testing
+
+The frontend has comprehensive test coverage:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Test Coverage**:
+- Components (Navbar, ProtectedRoute)
+- Contexts (AuthContext)
+- API services (device-service, loan-service)
+- Utility functions
+
+## Production Build
+
+The application is configured for DigitalOcean App Platform deployments:
+
+**Build Configuration**:
+- Build-time dependencies (Tailwind CSS, PostCSS, Autoprefixer) are in `dependencies`
+- TypeScript path aliases configured with `baseUrl: "."`
+- Tailwind config includes all component directories
+
+**Build Commands**:
+```bash
+npm install  # Installs all dependencies
+npm run build  # Builds the Next.js app
+npm start  # Starts the production server
+```
+
 ## Notes
 
 - The frontend uses client-side rendering for most pages
@@ -141,5 +180,6 @@ npm run lint
 - JWT tokens are stored in HTTP-only cookies (via js-cookie)
 - Protected routes automatically redirect unauthenticated users to login
 - Staff-only routes redirect non-staff users appropriately
+- Path aliases (`@/*`) allow clean imports throughout the codebase
 
 

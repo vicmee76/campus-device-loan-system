@@ -30,8 +30,8 @@ campus-device-loan-system/
 │   ├── device-service/    # Device catalog, reservations, waitlist, users
 │   └── loan-service/      # Loan lifecycle, returns, collections, notifications
 ├── database/              # Shared PostgreSQL database (migrations & seeds)
-├── frontend/              # Web UI (to be implemented)
-├── infra/                 # Infrastructure as Code (to be implemented)
+├── frontend/              # Next.js web UI
+├── .github/workflows/     # CI/CD workflows
 └── docs/                  # Documentation (this folder)
 ```
 
@@ -93,27 +93,47 @@ Shared PostgreSQL database with centralized migrations and seeds.
 
 ### Frontend
 
-#### [Frontend](./frontend/frontend.md)
+#### [Frontend](../../frontend/README.md)
 **Location**: `frontend/`
 
-Web UI for students and staff (to be implemented).
+Next.js 14 web application providing a modern, responsive interface for students and staff.
 
-**Status**: 🚧 To be implemented
+**Status**: ✅ Fully implemented
+
+**Key Features**:
+- User authentication with JWT tokens
+- Device catalog browsing and search
+- Reservation and waitlist management
+- Loan tracking
+- Staff dashboard for loan operations
+- Responsive design with Tailwind CSS
+
+**Technologies**:
+- Next.js 14 with App Router
+- TypeScript
+- Tailwind CSS
+- Axios for API calls
+- React Testing Library for tests
 
 **Related Files**:
 - Frontend README: [`frontend/README.md`](../../frontend/README.md)
 
-### Infrastructure
+### Deployment
 
-#### [Infrastructure](./infrastructure/infrastructure.md)
-**Location**: `infra/`
+**Platform**: DigitalOcean App Platform
 
-Infrastructure as Code for deployment (to be implemented).
+The application is deployed on DigitalOcean App Platform with automatic deployments triggered by pushes to the `main` branch.
 
-**Status**: 🚧 To be implemented
+**Infrastructure**:
+- Backend services: Node.js apps on DigitalOcean
+- Frontend: Next.js app on DigitalOcean
+- Database: Managed PostgreSQL (external)
+- CI/CD: GitHub Actions for tests and migrations
 
-**Related Files**:
-- Infrastructure README: [`infra/README.md`](../../infra/README.md)
+**Key Configuration**:
+- Build dependencies (TypeScript, Tailwind) are in `dependencies` (required for DigitalOcean builds)
+- Auto-deployment on push to `main`
+- Environment variables managed via DigitalOcean dashboard
 
 ### API Documentation
 
