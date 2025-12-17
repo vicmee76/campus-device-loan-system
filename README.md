@@ -23,18 +23,20 @@ campus-device-loan-system/
 │   ├── device-service/    # Device catalog, reservations, waitlist, users
 │   └── loan-service/      # Loan lifecycle, returns, collections, notifications
 ├── database/              # Shared PostgreSQL database (migrations & seeds)
-├── frontend/              # Web UI (to be implemented)
-├── infra/                 # Infrastructure as Code (to be implemented)
+├── frontend/              # Next.js web UI
+├── .github/workflows/     # CI/CD workflows
 └── docs/                  # Architecture diagrams and documentation
 ```
 
 ### Technology Stack
 
 - **Backend**: Node.js, TypeScript, Express.js
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
 - **Database**: PostgreSQL
 - **ORM/Query Builder**: Knex.js
 - **Authentication**: JWT (JSON Web Tokens)
-- **Testing**: Jest, Supertest
+- **Testing**: Jest, Supertest, React Testing Library
+- **Deployment**: DigitalOcean App Platform
 - **Architecture Patterns**: Repository Pattern, Factory Pattern, Dependency Injection (TSyringe)
 
 > 📖 **For detailed architecture documentation, API references, and component guides, see the [Documentation Hub](./docs/README.md)**
@@ -82,13 +84,27 @@ Shared PostgreSQL database with centralized migrations and seeds.
 - Self-contained package with its own dependencies
 - Shared across all backend services
 
-### Frontend
+### [Frontend](./frontend/README.md)
 
-Web UI for students and staff (to be implemented).
+Next.js 14 web application providing a modern, responsive interface for students and staff.
 
-### Infrastructure
+**Features**:
+- User authentication with JWT tokens
+- Device catalog browsing and search
+- Reservation and waitlist management
+- Loan tracking
+- Staff dashboard for loan operations
+- Responsive design with Tailwind CSS
 
-Infrastructure as Code for deployment (to be implemented).
+### Deployment
+
+The application is deployed on **DigitalOcean App Platform** with automatic deployments triggered by pushes to the `main` branch.
+
+**Infrastructure**:
+- Backend services: Node.js apps on DigitalOcean App Platform
+- Frontend: Next.js app on DigitalOcean App Platform
+- Database: Managed PostgreSQL (external)
+- CI/CD: GitHub Actions for tests and migrations
 
 ### Documentation
 
@@ -150,6 +166,21 @@ Architecture diagrams, NFRs, plans, and project documentation.
    npm run dev
    ```
 
+5. **Set up Frontend** (Optional - for local development)
+   ```bash
+   cd frontend
+   npm install
+   
+   # Create .env.local file
+   echo "NEXT_PUBLIC_DEVICE_SERVICE_URL=http://localhost:7778" > .env.local
+   echo "NEXT_PUBLIC_LOAN_SERVICE_URL=http://localhost:7779" >> .env.local
+   
+   # Start the development server
+   npm run dev
+   
+   # Open http://localhost:3000 in your browser
+   ```
+
 ## 🔧 Development
 
 ### Running Migrations
@@ -190,12 +221,19 @@ cd backend/device-service
 npm test
 npm run test:unit
 npm run test:integration
+npm run test:coverage
 
 # Loan Service
 cd backend/loan-service
 npm test
 npm run test:unit
 npm run test:integration
+npm run test:coverage
+
+# Frontend
+cd frontend
+npm test
+npm run test:coverage
 ```
 
 ## 📚 Documentation
@@ -263,10 +301,12 @@ All endpoints support pagination, comprehensive error handling, and role-based a
 
 ## 📊 Project Status
 
-- ✅ Device Service - Fully implemented with tests
+- ✅ Device Service - Fully implemented with comprehensive test coverage
 - ✅ Loan Service - Fully implemented with loan management and tracking
-- ⏳ Frontend - To be implemented
-- ⏳ Infrastructure - To be implemented
+- ✅ Frontend - Fully implemented with Next.js 14 and Tailwind CSS
+- ✅ Database - Migrations and seeds with Knex.js
+- ✅ Deployment - DigitalOcean App Platform with CI/CD
+- ✅ Testing - Unit and integration tests for all services
 
 ## 👥 Student Information
 
@@ -280,6 +320,27 @@ ISC
 ## 🤝 Contributing
 
 This is a student project. For questions or issues, please contact the project maintainer.
+
+## 🚀 Deployment
+
+The application is deployed on DigitalOcean App Platform:
+
+**Automatic Deployments**:
+- Push to `main` branch triggers automatic rebuild and deployment
+- Build process handles TypeScript compilation and dependency management
+- Health checks ensure services are running correctly
+
+**Production Build Requirements**:
+- Node.js 18.x
+- Build dependencies (TypeScript, Tailwind) in `dependencies` (not `devDependencies`)
+- Environment variables configured in DigitalOcean dashboard
+
+**Services**:
+- Device Service: Port 8080 (path: `/device`)
+- Loan Service: Port 8080 (path: `/loan`)
+- Frontend: Port 8080 (path: `/`)
+
+For deployment details and troubleshooting, see the service-specific documentation.
 
 ---
 

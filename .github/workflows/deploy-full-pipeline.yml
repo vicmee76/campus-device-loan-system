@@ -8,9 +8,14 @@ on:
 
 jobs:
 # =========================================================
+<<<<<<< Updated upstream
 # Infrastructure Note:
 # Terraform is managed locally only (not in CI/CD)
 # Run: cd infra/terraform && terraform init/plan/apply
+=======
+# Infrastructure managed by DigitalOcean App Platform
+# Auto-deploys on push to main
+>>>>>>> Stashed changes
 # =========================================================
 
 # =========================================================
@@ -38,7 +43,6 @@ jobs:
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run migrate:latest
 
       # ---- Seed database IF EMPTY (single source of truth) ----
@@ -46,7 +50,6 @@ jobs:
         working-directory: database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: |
           cat > seed-if-empty.js << 'SCRIPT_EOF'
           require('ts-node/register');
@@ -81,7 +84,7 @@ jobs:
 
 
 # =========================================================
-# 3️⃣ DEVICE SERVICE
+# 2️⃣ DEVICE SERVICE
 # =========================================================
   device-service:
     name: Device Service
@@ -109,7 +112,6 @@ jobs:
         working-directory: backend/device-service
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run test:integration
 
       - name: Build project
@@ -125,7 +127,7 @@ jobs:
 
 
 # =========================================================
-# 4️⃣ LOAN SERVICE
+# 3️⃣ LOAN SERVICE
 # =========================================================
   loan-service:
     name: Loan Service
@@ -153,7 +155,6 @@ jobs:
         working-directory: backend/loan-service
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: npm run test:integration
 
       - name: Build project
@@ -169,7 +170,7 @@ jobs:
 
 
 # =========================================================
-# 5️⃣ FRONTEND
+# 4️⃣ FRONTEND
 # =========================================================
   frontend:
     name: Frontend
@@ -199,3 +200,4 @@ jobs:
 
       - name: Deploy frontend
         run: echo "Frontend deployment step — configure hosting target"
+
