@@ -1,4 +1,4 @@
-data "digitalocean_project" "main" {
+data "digitalocean_project" "existing" {
   name = "campus-device-loan-${var.environment}"
 }
 
@@ -11,6 +11,5 @@ resource "digitalocean_project" "main" {
 }
 
 locals {
-  project_id  = var.create_project ? digitalocean_project.main[0].id : data.digitalocean_project.main.id
-  project_urn = var.create_project ? digitalocean_project.main[0].urn : "do:project:${data.digitalocean_project.main.id}"
+  project_id = var.create_project ? digitalocean_project.main[0].id : data.digitalocean_project.existing.id
 }
