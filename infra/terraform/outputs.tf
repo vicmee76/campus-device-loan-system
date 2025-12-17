@@ -1,19 +1,19 @@
 output "device_service_app_id" {
   description = "Device Service App ID"
-  value       = digitalocean_app.device_service.id
+  value       = var.apps_exist ? null : digitalocean_app.device_service[0].id
 }
 
 output "loan_service_app_id" {
   description = "Loan Service App ID"
-  value       = digitalocean_app.loan_service.id
+  value       = var.apps_exist ? null : digitalocean_app.loan_service[0].id
 }
 
 output "device_service_url" {
   description = "Device Service URL"
-  value       = digitalocean_app.device_service.live_url
+  value       = var.apps_exist ? null : digitalocean_app.device_service[0].live_url
 }
 
 output "loan_service_url" {
   description = "Loan Service URL"
-  value       = digitalocean_app.loan_service.live_url
+  value       = var.apps_exist ? null : digitalocean_app.loan_service[0].live_url
 }
