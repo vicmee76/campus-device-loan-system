@@ -2,35 +2,17 @@
 # Copy this to terraform.tfvars and fill in your values
 # terraform.tfvars is gitignored and should not be committed
 
-# Azure Subscription ID (optional - will use default from Azure CLI if not provided)
-# Get your subscription ID: az account show --query id -o tsv
-# subscription_id = "972efdff-ae97-4f78-bb69-6a1c6bd2fdf8"
+# DigitalOcean API Token (sensitive - get from https://cloud.digitalocean.com/account/api/tokens)
+digitalocean_token = "your-digitalocean-api-token"
 
-location            = "West Europe"
-resource_group_name = "campus-device-loan-rg"
-environment         = "dev"
+# GitHub repository URL (format: owner/repo)
+github_repo_url = "vicmee76/campus-device-loan-system"
 
-# Database credentials (sensitive - use Azure Key Vault or environment variables)
-db_admin_user     = "adminuser"
-db_admin_password = "YourSecurePassword123!"
-db_name           = "campus_device_loan"
+# External database connection URL (sensitive - database is managed outside Terraform)
+database_url = "postgresql://user:password@host:port/database?sslmode=require"
 
-# Database URL (sensitive - will be constructed from PostgreSQL server)
-# Format: postgresql://username:password@hostname:5432/database_name
-# Note: Update this after PostgreSQL server is created with the actual FQDN
-database_url = "postgresql://adminuser:YourSecurePassword123!@campus-device-loan-db.postgres.database.azure.com:5432/campus_device_loan"
+# Environment
+environment = "dev"
 
-# JWT Secret (sensitive - must match in both services)
-jwt_secret = "your-super-secret-jwt-key-change-this-in-production"
-
-# CORS Origin (use * for all origins or specific domain)
-cors_origin = "*"
-
-# Tags
-tags = {
-  Project     = "Campus Device Loan System"
-  ManagedBy   = "Terraform"
-  Environment = "dev"
-  Team        = "Platform"
-}
-
+# Region
+region = "nyc3"
