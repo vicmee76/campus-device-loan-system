@@ -27,12 +27,6 @@ variable "region" {
   default     = "nyc3"
 }
 
-variable "create_project" {
-  description = "Whether to create a new DigitalOcean project. Set to false if project already exists."
-  type        = bool
-  default     = false
-}
-
 variable "apps_exist" {
   description = "Set to true if apps already exist in DigitalOcean (will skip creation and require import). Set to false to create new apps."
   type        = bool

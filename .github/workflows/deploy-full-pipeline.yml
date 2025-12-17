@@ -23,6 +23,33 @@ jobs:
         with:
           terraform_version: 1.6.x
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Detect existing DigitalOcean project
+        working-directory: infra/terraform
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          ENVIRONMENT: ${{ vars.ENVIRONMENT || 'dev' }}
+        run: |
+          PROJECT_NAME="campus-device-loan-${ENVIRONMENT}"
+          
+          PROJECT_RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.digitalocean.com/v2/projects")
+          
+          PROJECT_ID=$(echo "$PROJECT_RESPONSE" | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.name == $name) | .id')
+          
+          if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ]; then
+            echo "PROJECT_EXISTS=true" >> $GITHUB_ENV
+            echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+            echo "Found existing project: $PROJECT_NAME (ID: $PROJECT_ID)"
+          else
+            echo "PROJECT_EXISTS=false" >> $GITHUB_ENV
+            echo "Project does not exist: $PROJECT_NAME"
+          fi
+
       - name: Terraform Init
         working-directory: infra/terraform
         env:
@@ -30,6 +57,16 @@ jobs:
           TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
         run: terraform init
+
+      - name: Import existing project
+        if: env.PROJECT_EXISTS == 'true'
+        working-directory: infra/terraform
+        env:
+          TF_VAR_digitalocean_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo_url: ${{ secrets.REPO_URL }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+        run: |
+          terraform import digitalocean_project.main ${{ env.PROJECT_ID }} || echo "Project may already be in state"
 
       - name: Terraform Validate
         working-directory: infra/terraform
