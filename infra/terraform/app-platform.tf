@@ -117,12 +117,3 @@ resource "digitalocean_project_resources" "main" {
     digitalocean_app.frontend.urn
   ]
 }
-
-# Attach backend and frontend apps to the project
-resource "digitalocean_project_resources" "main" {
-  project = local.project_id
-  resources = [
-    digitalocean_app.backend.urn,
-    digitalocean_app.frontend.urn
-  ]
-}
