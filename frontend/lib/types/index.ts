@@ -92,4 +92,18 @@ export interface PaginatedResponse<T> {
   pagination: Pagination;
 }
 
+export interface EmailNotification {
+  emailId: string;
+  userId: string;
+  emailAddress: string;
+  subject: string;
+  body: string;
+  status: 'pending' | 'sent' | 'failed';
+  attempts: number;
+  errorMessage: string | null;
+  sentAt: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 

@@ -3,6 +3,7 @@ import { CircuitBreaker, CircuitState } from '../utils/circuit-breaker';
 import { RetryHandler } from '../utils/retry';
 import { logger } from '../utils/logger';
 import { withTimeout } from '../utils/timeout';
+import emailNotificationRepository from '../repository/email-notification.repository';
 
 @injectable()
 export class EmailService {
@@ -50,34 +51,55 @@ export class EmailService {
   }
 
   private async sendEmail(userId: string, userEmail: string, deviceInfo: { brand: string; model: string }): Promise<void> {
-    // TODO: Replace with actual email service integration (e.g., SendGrid, AWS SES, etc.)
-    // This is a mock implementation that simulates email sending
+    const subject = `Device Available: ${deviceInfo.brand} ${deviceInfo.model}`;
+    const body = `
+                Hello,
 
-    logger.info('Sending email notification', {
+                Great news! The device you requested is now available for reservation.
+
+                Device Details:
+                - Brand: ${deviceInfo.brand}
+                - Model: ${deviceInfo.model}
+
+                Please log in to the Campus Device Loan System to reserve this device before it's claimed by someone else.
+
+                Best regards,
+                Campus Device Loan System
+    `.trim();
+
+    logger.info('Creating email notification record', {
       userId,
       userEmail,
-      deviceInfo,
+      subject,
       circuitState: this.circuitBreaker.getState(),
     });
 
-    // Simulate email service call
-    // In production, this would call your email provider API
-    // Example:
-    // await emailProvider.send({
-    //   to: userEmail,
-    //   subject: `Device Available: ${deviceInfo.brand} ${deviceInfo.model}`,
-    //   body: `The device you requested is now available...`
-    // });
+    try {
+      // Simulate potential failures for testing
+      if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
+        throw new Error('Email service temporarily unavailable');
+      }
 
-    // Simulate potential failures for testing
-    if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
-      throw new Error('Email service temporarily unavailable');
+      // Create email notification using repository
+      const emailRecord = await emailNotificationRepository.create(
+        {
+          userId,
+          emailAddress: userEmail,
+          subject,
+          body,
+        },
+        'sent'
+      );
+
+      logger.info('Email notification recorded successfully', {
+        emailId: emailRecord.email_id,
+        userId,
+        userEmail
+      });
+    } catch (error) {
+      logger.error('Email notification failed', error, { userId, userEmail });
+      throw error;
     }
-
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    logger.info('Email sent successfully', { userId, userEmail });
   }
 
   getCircuitBreakerState(): CircuitState {

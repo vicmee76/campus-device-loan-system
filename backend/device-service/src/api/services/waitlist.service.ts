@@ -8,6 +8,7 @@ import db from '../../database/connection';
 import { WaitlistTable } from '../model/waitlist.model';
 import WaitlistFactory from '../factory/waitlist.factory';
 import deviceRepository from '../repository/device.repository';
+import userRepository from '../repository/user.repository';
 
 @injectable()
 export class WaitlistService {
@@ -99,9 +100,14 @@ export class WaitlistService {
         return;
       }
 
-      // Get user information (you may need to add this to userRepository)
-      // For now, we'll use the userId from waitlist
-      const userEmail = `user-${nextUser.userId}@campus.edu`; // TODO: Get actual email from user service
+      // Get user information to get actual email
+      const user = await userRepository.findById(nextUser.userId);
+      if (!user) {
+        logger.warn('notifyNextUser: user not found', { userId: nextUser.userId });
+        return;
+      }
+
+      const userEmail = user.email;
 
       try {
         // Send email with circuit breaker and retry logic
