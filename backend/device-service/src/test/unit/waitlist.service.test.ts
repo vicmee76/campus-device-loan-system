@@ -1,22 +1,30 @@
+/// <reference types="jest" />
 import { WaitlistService } from '../../api/services/waitlist.service';
 import waitlistRepository from '../../api/repository/waitlist.repository';
 import deviceRepository from '../../api/repository/device.repository';
+import userRepository from '../../api/repository/user.repository';
 import emailService from '../../api/services/email.service';
+import emailNotificationRepository from '../../api/repository/email-notification.repository';
 import { JoinWaitlistResponseDto, WaitlistDto } from '../../api/dtos/waitlist.dto';
 import { DeviceDto } from '../../api/dtos/device.dto';
+import { UserDto } from '../../api/dtos/user.dto';
 import db from '../../database/connection';
 
 // Mock dependencies
 jest.mock('../../api/repository/waitlist.repository');
 jest.mock('../../api/repository/device.repository');
+jest.mock('../../api/repository/user.repository');
 jest.mock('../../api/services/email.service');
+jest.mock('../../api/repository/email-notification.repository');
 jest.mock('../../database/connection');
 
 describe('WaitlistService - Unit Tests', () => {
   let waitlistService: WaitlistService;
   const mockWaitlistRepository = waitlistRepository as jest.Mocked<typeof waitlistRepository>;
   const mockDeviceRepository = deviceRepository as jest.Mocked<typeof deviceRepository>;
+  const mockUserRepository = userRepository as jest.Mocked<typeof userRepository>;
   const mockEmailService = emailService as jest.Mocked<typeof emailService>;
+  const mockEmailNotificationRepository = emailNotificationRepository as jest.Mocked<typeof emailNotificationRepository>;
   const mockDb = db as jest.MockedFunction<any>;
 
   beforeEach(() => {
@@ -152,16 +160,37 @@ describe('WaitlistService - Unit Tests', () => {
       isDeleted: false,
     };
 
+    const mockUser: UserDto = {
+      userId: 'user-123',
+      email: 'user@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      role: 'student',
+      isActive: true,
+      isDeleted: false,
+      createdAt: new Date(),
+    };
+
     it('should notify next user successfully', async () => {
       mockWaitlistRepository.getNextUser.mockResolvedValue(mockWaitlistEntry);
       mockDeviceRepository.findById.mockResolvedValue(mockDevice);
+      mockUserRepository.findById.mockResolvedValue(mockUser);
       mockEmailService.sendNotificationEmail.mockResolvedValue();
       mockWaitlistRepository.markAsNotified.mockResolvedValue(mockWaitlistEntry);
 
       await waitlistService.notifyNextUser(mockDeviceId);
 
       expect(mockWaitlistRepository.getNextUser).toHaveBeenCalledWith(mockDeviceId);
-      expect(mockEmailService.sendNotificationEmail).toHaveBeenCalled();
+      expect(mockDeviceRepository.findById).toHaveBeenCalledWith(mockDeviceId);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(mockWaitlistEntry.userId);
+      expect(mockEmailService.sendNotificationEmail).toHaveBeenCalledWith(
+        mockWaitlistEntry.userId,
+        mockUser.email,
+        {
+          brand: mockDevice.brand,
+          model: mockDevice.model,
+        }
+      );
       expect(mockWaitlistRepository.markAsNotified).toHaveBeenCalledWith(mockWaitlistEntry.waitlistId);
     });
 
@@ -177,6 +206,7 @@ describe('WaitlistService - Unit Tests', () => {
     it('should not mark as notified when email fails', async () => {
       mockWaitlistRepository.getNextUser.mockResolvedValue(mockWaitlistEntry);
       mockDeviceRepository.findById.mockResolvedValue(mockDevice);
+      mockUserRepository.findById.mockResolvedValue(mockUser);
       mockEmailService.sendNotificationEmail.mockRejectedValue(new Error('Email error'));
 
       await waitlistService.notifyNextUser(mockDeviceId);
@@ -188,6 +218,17 @@ describe('WaitlistService - Unit Tests', () => {
     it('should handle device not found error gracefully', async () => {
       mockWaitlistRepository.getNextUser.mockResolvedValue(mockWaitlistEntry);
       mockDeviceRepository.findById.mockResolvedValue(null);
+
+      await waitlistService.notifyNextUser(mockDeviceId);
+
+      expect(mockEmailService.sendNotificationEmail).not.toHaveBeenCalled();
+      expect(mockWaitlistRepository.markAsNotified).not.toHaveBeenCalled();
+    });
+
+    it('should handle user not found error gracefully', async () => {
+      mockWaitlistRepository.getNextUser.mockResolvedValue(mockWaitlistEntry);
+      mockDeviceRepository.findById.mockResolvedValue(mockDevice);
+      mockUserRepository.findById.mockResolvedValue(null);
 
       await waitlistService.notifyNextUser(mockDeviceId);
 
