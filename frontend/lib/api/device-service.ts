@@ -130,6 +130,22 @@ class DeviceServiceClient {
     const response = await this.client.get(`/waitlist/get-by-user-id/${userId}`);
     return response.data;
   }
+
+  // Email notification endpoints
+  async getEmailsByUserId(userId: string, params?: { isRead?: boolean; limit?: number }) {
+    const response = await this.client.get(`/users/emails/user/${userId}`, { params });
+    return response.data;
+  }
+
+  async getEmailById(emailId: string) {
+    const response = await this.client.get(`/users/emails/${emailId}`);
+    return response.data;
+  }
+
+  async markEmailAsRead(emailId: string) {
+    const response = await this.client.patch(`/users/emails/${emailId}/mark-read`);
+    return response.data;
+  }
 }
 
 export const deviceService = new DeviceServiceClient();

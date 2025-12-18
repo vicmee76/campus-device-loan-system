@@ -12,18 +12,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set. Please set it in database/.env file or export it.');
 }
 
-// SSL configuration for Aiven PostgreSQL (private CA)
-// rejectUnauthorized: false allows self-signed certificates from Aiven's private CA
-const sslConfig = {
-  rejectUnauthorized: false
-};
+// Force NODE_TLS_REJECT_UNAUTHORIZED=0 to allow self-signed certificates
+// This is safe for Aiven PostgreSQL with private CA
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const baseConfig = {
   client: "pg",
-  connection: {
-    connectionString: process.env.DATABASE_URL,
-    ssl: sslConfig
-  },
+  connection: process.env.DATABASE_URL,
   migrations: { directory: "./migrations" },
   seeds: { directory: "./seeds" }
 };
