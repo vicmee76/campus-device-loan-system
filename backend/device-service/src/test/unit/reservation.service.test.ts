@@ -852,6 +852,16 @@ describe('ReservationService - Unit Tests', () => {
       status: 'pending',
     };
 
+    it('should return error when userId is missing', async () => {
+      const mockTrx = await mockDb.transaction();
+
+      const result = await reservationService.cancelReservation('', mockReservationId);
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe('09');
+      expect(mockTrx.rollback).toHaveBeenCalled();
+    });
+
     it('should return error when reservationId is missing', async () => {
       const mockTrx = await mockDb.transaction();
 

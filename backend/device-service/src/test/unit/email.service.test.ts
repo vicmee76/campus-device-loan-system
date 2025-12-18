@@ -2,6 +2,15 @@ import { EmailService } from '../../api/services/email.service';
 import { CircuitBreaker, CircuitState } from '../../api/utils/circuit-breaker';
 import { RetryHandler } from '../../api/utils/retry';
 import { withTimeout } from '../../api/utils/timeout';
+import emailNotificationRepository from '../../api/repository/email-notification.repository';
+
+// Mock email notification repository
+jest.mock('../../api/repository/email-notification.repository', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn(),
+  },
+}));
 
 // Mock circuit breaker
 jest.mock('../../api/utils/circuit-breaker', () => {
@@ -36,16 +45,37 @@ describe('EmailService - Unit Tests', () => {
   let mockCircuitBreaker: jest.Mocked<CircuitBreaker>;
   const mockRetryHandler = RetryHandler as jest.Mocked<typeof RetryHandler>;
   const mockWithTimeout = withTimeout as jest.MockedFunction<typeof withTimeout>;
+  const mockEmailNotificationRepository = emailNotificationRepository as jest.Mocked<typeof emailNotificationRepository>;
 
   beforeEach(() => {
     emailService = new EmailService();
     mockCircuitBreaker = (emailService as any).circuitBreaker;
     jest.clearAllMocks();
     jest.useFakeTimers();
+    
+    // Clear environment variable before each test
+    delete process.env.SIMULATE_EMAIL_FAILURE;
+    
+    // Setup default mock for repository
+    mockEmailNotificationRepository.create.mockResolvedValue({
+      email_id: 'email-123',
+      user_id: 'user-123',
+      email_address: 'user@example.com',
+      subject: 'Test Subject',
+      body: 'Test Body',
+      status: 'sent',
+      attempts: 1,
+      error_message: null,
+      sent_at: new Date(),
+      is_read: false,
+      created_at: new Date(),
+    } as any);
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    // Clean up environment variable
+    delete process.env.SIMULATE_EMAIL_FAILURE;
   });
 
   describe('sendNotificationEmail', () => {
@@ -108,6 +138,7 @@ describe('EmailService - Unit Tests', () => {
         5000,
         'Email service timeout'
       );
+      expect(mockEmailNotificationRepository.create).toHaveBeenCalled();
     });
 
     it('should retry on retryable errors', async () => {
@@ -161,6 +192,7 @@ describe('EmailService - Unit Tests', () => {
         expect(result2 === false || result2 === undefined).toBe(true);
       }
     });
+
 
     it('should get circuit breaker state', () => {
       const state = emailService.getCircuitBreakerState();
