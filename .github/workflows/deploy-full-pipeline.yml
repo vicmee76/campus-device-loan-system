@@ -196,6 +196,10 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Deploy frontend
-        run: echo "Frontend deployment step — configure hosting target"
+      - name: Trigger DigitalOcean deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/${{ secrets.FRONTEND_APP_ID }}/deployments
 
