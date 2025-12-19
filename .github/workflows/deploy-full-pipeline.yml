@@ -273,6 +273,15 @@ jobs:
         run: |
           set -euo pipefail
 
+          # If state is empty (first run / new workspace), we must run apply at least once
+          # so resources and state outputs exist.
+          state_count="$(terraform state list 2>/dev/null | wc -l | tr -d ' ')"
+          if [ "${state_count}" -eq 0 ]; then
+            echo "state_empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "state_empty=false" >> "$GITHUB_OUTPUT"
+          fi
+
           # Exit codes:
           # - 0 = no changes
           # - 2 = changes present
@@ -294,7 +303,7 @@ jobs:
           fi
 
       - name: Terraform apply
-        if: steps.tf_plan.outputs.has_changes == 'true'
+        if: steps.tf_plan.outputs.has_changes == 'true' || steps.tf_plan.outputs.state_empty == 'true'
         working-directory: infra/terraform
         run: terraform apply -auto-approve
 
@@ -304,22 +313,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # NOTE:
-          # `terraform output` can print human-formatted warnings (sometimes to stdout),
-          # which will corrupt $GITHUB_OUTPUT if we capture/echo it. So we suppress stderr
-          # and fall back to reading values directly from state when outputs are missing.
-
-          set +e
-          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
-          db_ec="$?"
-          set -e
-
-          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
+          # IMPORTANT: avoid `terraform output` here — it can emit warnings that corrupt $GITHUB_OUTPUT.
+          # Read values directly from state instead.
+          DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
 
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: Could not determine database_url from terraform outputs or state."
+            echo "ERROR: Could not determine database_url from terraform state."
             terraform state list || true
             exit 1
           fi
@@ -332,23 +331,9 @@ jobs:
             echo "${delim}"
           } >> "$GITHUB_OUTPUT"
 
-          # App IDs: prefer Terraform outputs (if present), but fall back to reading resource IDs from state.
-          # This avoids failing on first runs after adding new outputs, where remote state doesn't have them yet.
-          set +e
-          DEVICE_APP_ID="$(terraform output -raw device_app_id 2>/dev/null)"
-          LOAN_APP_ID="$(terraform output -raw loan_app_id 2>/dev/null)"
-          FRONTEND_APP_ID="$(terraform output -raw frontend_app_id 2>/dev/null)"
-          set -e
-
-          if [ -z "${DEVICE_APP_ID}" ] || [ "${DEVICE_APP_ID}" = "null" ]; then
-            DEVICE_APP_ID="$(terraform state show -no-color digitalocean_app.device | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
-          if [ -z "${LOAN_APP_ID}" ] || [ "${LOAN_APP_ID}" = "null" ]; then
-            LOAN_APP_ID="$(terraform state show -no-color digitalocean_app.loan | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
-          if [ -z "${FRONTEND_APP_ID}" ] || [ "${FRONTEND_APP_ID}" = "null" ]; then
-            FRONTEND_APP_ID="$(terraform state show -no-color digitalocean_app.frontend | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
+          DEVICE_APP_ID="$(terraform state show -no-color digitalocean_app.device | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          LOAN_APP_ID="$(terraform state show -no-color digitalocean_app.loan | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          FRONTEND_APP_ID="$(terraform state show -no-color digitalocean_app.frontend | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
 
           if [ -z "${DEVICE_APP_ID}" ] || [ "${DEVICE_APP_ID}" = "null" ]; then
             echo "ERROR: terraform output device_app_id is empty"
