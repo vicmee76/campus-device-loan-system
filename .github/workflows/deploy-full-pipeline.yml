@@ -52,30 +52,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Import Apps by name (if they already exist in your DO account)
-          APPS_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/apps?per_page=200)"
+          # Import Apps by name (if they already exist in your DO account).
+          # NOTE: The list endpoint can be paginated AND often does not include spec.name,
+          # so we paginate through all apps, then resolve each name via GET /v2/apps/{id}.
+
+          list_all_app_ids () {
+            local url="https://api.digitalocean.com/v2/apps?per_page=200&page=1"
+            while [ -n "$url" ]; do
+              local resp next
+              resp="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "$url")"
+
+              # Emit ids found on this page
+              echo "$resp" | jq -r '.apps[]?.id'
+
+              # Follow pagination if present
+              next="$(echo "$resp" | jq -r '.links.pages.next // empty')"
+              url="$next"
+            done
+          }
 
           find_app_id () {
             local app_name="$1"
-            local app_id
+            local id app_json name
 
-            # Fast path: many responses include name/spec.name on the list endpoint
-            app_id="$(echo "$APPS_JSON" | jq -r --arg n "$app_name" '.apps[]? | select((.spec.name // .name // "") == $n) | .id' | head -n 1)"
-            if [ -n "$app_id" ] && [ "$app_id" != "null" ]; then
-              echo "$app_id"
-              return 0
-            fi
-
-            # Fallback: list endpoint sometimes omits spec/name; fetch each app and check its spec.name
             while IFS= read -r id; do
               [ -z "$id" ] && continue
-              APP_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${id}")"
-              NAME="$(echo "$APP_JSON" | jq -r '.app.spec.name // .app.name // empty')"
-              if [ "$NAME" = "$app_name" ]; then
+              app_json="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${id}")"
+              name="$(echo "$app_json" | jq -r '.app.spec.name // .app.name // empty')"
+              if [ "$name" = "$app_name" ]; then
                 echo "$id"
                 return 0
               fi
-            done < <(echo "$APPS_JSON" | jq -r '.apps[]?.id')
+            done < <(list_all_app_ids)
 
             return 1
           }
@@ -90,14 +98,19 @@ jobs:
                 terraform import -var-file=env/dev.tfvars "$tf_addr" "$app_id"
               fi
             else
-              echo "WARN: No existing app found for name='${app_name}'. If it already exists, DO API response may differ; printing discovered app names:"
-              echo "$APPS_JSON" | jq -r '.apps[]? | "- id=" + .id + " name=" + ((.spec.name // .name) // "<missing>")' || true
+              echo "WARN: No existing app found for name='${app_name}'."
             fi
           }
 
           import_app "digitalocean_app.device"   "${DEVICE_APP_NAME}"
           import_app "digitalocean_app.loan"     "${LOAN_APP_NAME}"
           import_app "digitalocean_app.frontend" "${FRONTEND_APP_NAME}"
+
+          # Fail fast: if apps already exist in DO but we couldn't import them, `terraform apply`
+          # will try to create and will hit 409 (name already exists).
+          terraform state show -no-color digitalocean_app.device   >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.device not in state after import. Aborting."; exit 1; }
+          terraform state show -no-color digitalocean_app.loan     >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.loan not in state after import. Aborting."; exit 1; }
+          terraform state show -no-color digitalocean_app.frontend >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.frontend not in state after import. Aborting."; exit 1; }
 
           # Import DB cluster by name (if it already exists)
           DBS_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/databases?per_page=200)"
