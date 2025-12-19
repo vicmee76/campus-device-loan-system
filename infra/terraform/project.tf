@@ -1,8 +1,8 @@
 resource "digitalocean_project" "main" {
-  name        = var.do_project_name
+  name        = local.do_project_full_name
   description = "Campus device loan system"
   purpose     = "Web Application"
-  environment = "Development"
+  environment = local.do_project_environment
 }
 
 # Attach resources to the project so they appear under one DO Project in the UI.

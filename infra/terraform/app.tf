@@ -4,7 +4,7 @@ resource "digitalocean_app" "device" {
   ]
 
   spec {
-    name   = var.device_app_name
+    name   = local.device_app_full_name
     region = var.app_region
 
     service {
@@ -58,7 +58,7 @@ resource "digitalocean_app" "loan" {
   ]
 
   spec {
-    name   = var.loan_app_name
+    name   = local.loan_app_full_name
     region = var.app_region
 
     service {
@@ -113,7 +113,7 @@ resource "digitalocean_app" "frontend" {
   ]
 
   spec {
-    name   = var.frontend_app_name
+    name   = local.frontend_app_full_name
     region = var.app_region
 
     service {

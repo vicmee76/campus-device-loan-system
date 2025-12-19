@@ -3,6 +3,21 @@ output "app_id" {
   value       = digitalocean_app.frontend.id
 }
 
+output "device_app_id" {
+  description = "ID of the device-service DigitalOcean App"
+  value       = digitalocean_app.device.id
+}
+
+output "loan_app_id" {
+  description = "ID of the loan-service DigitalOcean App"
+  value       = digitalocean_app.loan.id
+}
+
+output "frontend_app_id" {
+  description = "ID of the frontend DigitalOcean App"
+  value       = digitalocean_app.frontend.id
+}
+
 output "app_url" {
   description = "URL of the frontend DigitalOcean App"
   value       = digitalocean_app.frontend.default_ingress
