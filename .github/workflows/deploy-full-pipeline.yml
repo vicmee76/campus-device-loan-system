@@ -7,10 +7,10 @@ name: Full Deployment Pipeline
       - main
 
 env:
-  DEVICE_APP_NAME: device-service-dev
-  LOAN_APP_NAME: loan-service-dev
-  FRONTEND_APP_NAME: campus-frontend-dev
-  DB_CLUSTER_NAME: campus-device-loan-dev-db
+  DEVICE_APP_NAME: device-service
+  LOAN_APP_NAME: loan-service
+  FRONTEND_APP_NAME: campus-frontend
+  DB_CLUSTER_NAME: campus-device-loan-db
   # Terraform Cloud (remote state)
   TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
   TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
@@ -108,7 +108,8 @@ jobs:
               [ -z "$id" ] && continue
               app_json="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${id}")"
               name="$(echo "$app_json" | jq -r '.app.spec.name // .app.name // empty')"
-              if [ "$name" = "$app_name" ]; then
+              # Match exact OR prefix (some accounts/UI flows end up with generated suffixes)
+              if [ "$name" = "$app_name" ] || [[ "$name" == "${app_name}"* ]]; then
                 echo "$id"
                 return 0
               fi
@@ -128,18 +129,23 @@ jobs:
               fi
             else
               echo "WARN: No existing app found for name='${app_name}'."
+              echo "INFO: First few discovered apps (id + name) for debugging:"
+              list_all_app_ids | head -n 10 | while IFS= read -r dbg_id; do
+                dbg_json="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${dbg_id}")"
+                dbg_name="$(echo "$dbg_json" | jq -r '.app.spec.name // .app.name // empty')"
+                echo "- id=${dbg_id} name=${dbg_name}"
+              done
             fi
           }
 
           import_app "digitalocean_app.device"   "${DEVICE_APP_NAME}"
           import_app "digitalocean_app.loan"     "${LOAN_APP_NAME}"
           import_app "digitalocean_app.frontend" "${FRONTEND_APP_NAME}"
-
-          # Fail fast: if apps already exist in DO but we couldn't import them, `terraform apply`
-          # will try to create and will hit 409 (name already exists).
-          terraform state show -no-color digitalocean_app.device   >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.device not in state after import. Aborting."; exit 1; }
-          terraform state show -no-color digitalocean_app.loan     >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.loan not in state after import. Aborting."; exit 1; }
-          terraform state show -no-color digitalocean_app.frontend >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.frontend not in state after import. Aborting."; exit 1; }
+          
+          # NOTE:
+          # This import step is "best effort".
+          # - If resources exist, it imports them to avoid 409 name conflicts.
+          # - If you deleted everything to test a fresh create, it simply continues and Terraform will create them.
 
           # Import DB cluster by name (if it already exists)
           DBS_JSON="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/databases?per_page=200)"
