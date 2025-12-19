@@ -276,7 +276,7 @@ jobs:
           # If state is empty (first run / new workspace), we must run apply at least once
           # so resources and state outputs exist.
           # `terraform state list` can exit non-zero when no state exists yet; treat that as empty.
-          state_count="$(( (terraform state list 2>/dev/null || true) | wc -l | tr -d ' ' ))"
+          state_count="$( (terraform state list 2>/dev/null || true) | wc -l | tr -d ' ' )"
           if [ "${state_count}" -eq 0 ]; then
             echo "state_empty=true" >> "$GITHUB_OUTPUT"
           else
