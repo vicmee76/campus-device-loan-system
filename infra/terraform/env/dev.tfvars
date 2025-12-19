@@ -1,5 +1,5 @@
 environment = "dev"
-region = "nyc"
+region = "lon1"
 
 device_app_name   = "device-service-dev"
 loan_app_name     = "loan-service-dev"
