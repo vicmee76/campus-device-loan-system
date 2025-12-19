@@ -27,6 +27,9 @@ jobs:
   terraform:
     name: Terraform (Provision Apps)
     runs-on: ubuntu-latest
+    env:
+      # Terraform Cloud auth for ALL terraform commands in this job (init/plan/apply/output/state)
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
     outputs:
       database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
@@ -60,7 +63,6 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
         run: terraform init -backend-config=backend.hcl
 
       - name: Import existing DO resources (avoid name already exists)
@@ -70,7 +72,6 @@ jobs:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
         run: |
           set -euo pipefail
 
