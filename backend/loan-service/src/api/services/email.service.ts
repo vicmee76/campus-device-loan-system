@@ -86,10 +86,10 @@ export class EmailService {
                   Campus Device Loan System
       `.trim();
 
-      // Simulate potential failures for testing
-      if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
-        throw new Error('Email service temporarily unavailable');
-      }
+    // Simulate potential failures for testing
+    if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
+      throw new Error('Email service temporarily unavailable');
+    }
 
       // Create email notification using repository
       const emailRecord = await emailNotificationRepository.create(
