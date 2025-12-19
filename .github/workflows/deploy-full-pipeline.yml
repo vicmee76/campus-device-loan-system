@@ -13,10 +13,7 @@ env:
   DB_CLUSTER_NAME: campus-device-loan-db
   # Terraform Cloud (remote state)
   TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-  # Source-of-truth GitHub variable is TFC_DEV_WORKSPACE; keep TFC_WORKSPACE as an alias
-  # so the rest of this workflow + shell snippets can remain unchanged.
-  TFC_DEV_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
-  TFC_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
+  TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
 
 jobs:
 # =========================================================
@@ -53,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_DEV_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
 
           cat > backend.hcl <<EOF
           organization = "${TFC_ORGANIZATION}"
@@ -182,7 +179,7 @@ jobs:
           set -euo pipefail
 
           : "${TFC_ORGANIZATION:?Missing TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing TFC_DEV_WORKSPACE (exposed to this job as TFC_WORKSPACE)}"
+          : "${TFC_WORKSPACE:?Missing TFC_WORKSPACE}"
           : "${TFC_TOKEN:?Missing TF_TOKEN_app_terraform_io / TF_TOKEN_APP_TERRAFORM_IO secret}"
 
           echo "::add-mask::$DO_TOKEN"
@@ -292,30 +289,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # In a brand-new workspace, we may import resources and then skip apply (plan shows no changes),
-          # which means outputs are not yet written into state. If outputs are missing, do a refresh-only
-          # apply to populate them, then re-read.
-          set +e
-          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
-          ec="$?"
-          set -e
-
-          if [ "$ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "database_url output not available yet (new workspace/import-only). Running refresh-only apply to populate outputs..."
-            terraform apply -refresh-only -auto-approve
-            DB_URL="$(terraform output -raw database_url 2>/dev/null)"
-          fi
-
-          # Guard against GitHub file-command parsing issues (multi-line / warnings).
-          case "$DB_URL" in
-            *$'\n'*|*$'\r'*)
-              echo "ERROR: terraform output database_url is not a single line. Refusing to export it."
-              terraform output || true
-              exit 1
-              ;;
-          esac
-
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+          DB_URL="$(terraform output -raw database_url)"
+          if [ -z "${DB_URL}" ]; then
             echo "ERROR: terraform output database_url is empty. This usually means the DB cluster wasn't created/imported correctly, or outputs were not updated in state."
             terraform output || true
             terraform state list || true
@@ -341,22 +316,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set DATABASE_URL from Terraform job output
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
 
-          DB_URL="${{ needs.terraform.outputs.database_url }}"
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: terraform job did not provide database_url output."
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
             exit 1
           fi
-
-          case "$DB_URL" in
-            *$'\n'*|*$'\r'*)
-              echo "ERROR: DATABASE_URL is not a single line. Refusing to write to GITHUB_ENV."
-              exit 1
-              ;;
-          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -427,23 +417,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set DATABASE_URL from Terraform job output
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
         env:
-          DB_URL: ${{ needs.terraform.outputs.database_url }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
 
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: terraform job did not provide database_url output."
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
             exit 1
           fi
-
-          case "$DB_URL" in
-            *$'\n'*|*$'\r'*)
-              echo "ERROR: DATABASE_URL is not a single line. Refusing to write to GITHUB_ENV."
-              exit 1
-              ;;
-          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -501,23 +505,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set DATABASE_URL from Terraform job output
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
         env:
-          DB_URL: ${{ needs.terraform.outputs.database_url }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
 
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: terraform job did not provide database_url output."
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
             exit 1
           fi
-
-          case "$DB_URL" in
-            *$'\n'*|*$'\r'*)
-              echo "ERROR: DATABASE_URL is not a single line. Refusing to write to GITHUB_ENV."
-              exit 1
-              ;;
-          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -608,4 +626,3 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
             https://api.digitalocean.com/v2/apps/$APP_ID/deployments
-
