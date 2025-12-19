@@ -2,18 +2,28 @@ name: Full Deployment Pipeline
 
 "on":
   workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: "Environment to deploy (dev or prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
   push:
     branches:
       - main
 
 env:
-  DEVICE_APP_NAME: device-service
-  LOAN_APP_NAME: loan-service
-  FRONTEND_APP_NAME: campus-frontend
-  DB_CLUSTER_NAME: campus-device-loan-db
+  DEPLOY_ENV: ${{ github.event.inputs.deploy_env || 'dev' }}
+  DEVICE_APP_NAME: device-service-${{ github.event.inputs.deploy_env || 'dev' }}
+  LOAN_APP_NAME: loan-service-${{ github.event.inputs.deploy_env || 'dev' }}
+  FRONTEND_APP_NAME: campus-frontend-${{ github.event.inputs.deploy_env || 'dev' }}
+  DB_CLUSTER_NAME: campus-device-loan-db-${{ github.event.inputs.deploy_env || 'dev' }}
   # Terraform Cloud (remote state)
   TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-  TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+  TFC_WORKSPACE: ${{ (github.event.inputs.deploy_env || 'dev') == 'prod' && vars.TFC_PROD_WORKSPACE || vars.TFC_DEV_WORKSPACE }}
 
 jobs:
 # =========================================================
@@ -27,11 +37,15 @@ jobs:
   terraform:
     name: Terraform (Provision Apps)
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.deploy_env || 'dev' }}
     env:
       # Terraform Cloud auth for ALL terraform commands in this job (init/plan/apply/output/state)
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
     outputs:
       database_url: ${{ steps.tf_outputs.outputs.database_url }}
+      device_app_id: ${{ steps.tf_outputs.outputs.device_app_id }}
+      loan_app_id: ${{ steps.tf_outputs.outputs.loan_app_id }}
+      frontend_app_id: ${{ steps.tf_outputs.outputs.frontend_app_id }}
 
     steps:
       - name: Checkout code
@@ -160,11 +174,12 @@ jobs:
         working-directory: infra/terraform
         run: terraform validate
 
-      - name: Prepare dev auto tfvars (required for Terraform Cloud remote runs)
+      - name: Prepare env auto tfvars (required for Terraform Cloud remote runs)
         working-directory: infra/terraform
         run: |
           set -euo pipefail
-          cp env/dev.tfvars dev.auto.tfvars
+          rm -f *.auto.tfvars
+          cp "env/${DEPLOY_ENV}.tfvars" env.auto.tfvars
 
       - name: Sync Terraform Cloud workspace variables (from GitHub secrets)
         working-directory: infra/terraform
@@ -304,6 +319,27 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+          DEVICE_APP_ID="$(terraform output -raw device_app_id)"
+          LOAN_APP_ID="$(terraform output -raw loan_app_id)"
+          FRONTEND_APP_ID="$(terraform output -raw frontend_app_id)"
+
+          if [ -z "${DEVICE_APP_ID}" ] || [ "${DEVICE_APP_ID}" = "null" ]; then
+            echo "ERROR: terraform output device_app_id is empty"
+            exit 1
+          fi
+          if [ -z "${LOAN_APP_ID}" ] || [ "${LOAN_APP_ID}" = "null" ]; then
+            echo "ERROR: terraform output loan_app_id is empty"
+            exit 1
+          fi
+          if [ -z "${FRONTEND_APP_ID}" ] || [ "${FRONTEND_APP_ID}" = "null" ]; then
+            echo "ERROR: terraform output frontend_app_id is empty"
+            exit 1
+          fi
+
+          echo "device_app_id=${DEVICE_APP_ID}" >> "$GITHUB_OUTPUT"
+          echo "loan_app_id=${LOAN_APP_ID}" >> "$GITHUB_OUTPUT"
+          echo "frontend_app_id=${FRONTEND_APP_ID}" >> "$GITHUB_OUTPUT"
+
 # =========================================================
 # 1️⃣ DATABASE – Migrations & Deterministic Seeding
 # =========================================================
@@ -326,7 +362,7 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
@@ -427,7 +463,7 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
@@ -477,20 +513,10 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          APP_ID=$(curl -s \
+          curl -fsS -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.DEVICE_APP_NAME) | .id' | head -n 1)
-
-          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
-            echo "Could not find app id for ${DEVICE_APP_NAME}"
-            exit 1
-          fi
-
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
+            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.device_app_id }}/deployments
 
 
 # =========================================================
@@ -515,7 +541,7 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
@@ -565,20 +591,10 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          APP_ID=$(curl -s \
+          curl -fsS -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.LOAN_APP_NAME) | .id' | head -n 1)
-
-          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
-            echo "Could not find app id for ${LOAN_APP_NAME}"
-            exit 1
-          fi
-
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
+            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.loan_app_id }}/deployments
 
 
 # =========================================================
@@ -612,18 +628,8 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          APP_ID=$(curl -s \
+          curl -fsS -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.FRONTEND_APP_NAME) | .id' | head -n 1)
-
-          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
-            echo "Could not find app id for ${FRONTEND_APP_NAME}"
-            exit 1
-          fi
-
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
+            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.frontend_app_id }}/deployments
 

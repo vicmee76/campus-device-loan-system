@@ -1,5 +1,5 @@
 resource "digitalocean_database_cluster" "postgres" {
-  name       = var.db_cluster_name
+  name       = local.db_cluster_full_name
   engine     = "pg"
   version    = var.db_engine_version
   region     = var.db_region
