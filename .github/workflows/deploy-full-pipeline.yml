@@ -88,10 +88,10 @@ jobs:
             local url="https://api.digitalocean.com/v2/apps?per_page=200&page=1"
             while [ -n "$url" ]; do
               local resp next
-              resp="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "$url")"
+              resp="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "$url")"
 
               # Emit ids found on this page
-              echo "$resp" | jq -r '.apps[]?.id'
+              echo "$resp" | jq -r '(.apps // [])[]? | .id'
 
               # Follow pagination if present
               next="$(echo "$resp" | jq -r '.links.pages.next // empty')"
@@ -105,7 +105,7 @@ jobs:
 
             while IFS= read -r id; do
               [ -z "$id" ] && continue
-              app_json="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${id}")"
+              app_json="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" "https://api.digitalocean.com/v2/apps/${id}")"
               name="$(echo "$app_json" | jq -r '.app.spec.name // .app.name // empty')"
               if [ "$name" = "$app_name" ]; then
                 echo "$id"
@@ -141,8 +141,8 @@ jobs:
           terraform state show -no-color digitalocean_app.frontend >/dev/null 2>&1 || { echo "ERROR: digitalocean_app.frontend not in state after import. Aborting."; exit 1; }
 
           # Import DB cluster by name (if it already exists)
-          DBS_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/databases?per_page=200)"
-          DB_ID="$(echo "$DBS_JSON" | jq -r --arg n "${DB_CLUSTER_NAME}" '.databases[] | select(.name == $n) | .id' | head -n 1)"
+          DBS_JSON="$(curl -fsS -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/databases?per_page=200)"
+          DB_ID="$(echo "$DBS_JSON" | jq -r --arg n "${DB_CLUSTER_NAME}" '(.databases // [])[] | select(.name == $n) | .id' | head -n 1)"
           if [ -n "$DB_ID" ] && [ "$DB_ID" != "null" ]; then
             if ! terraform state list | grep -q "^digitalocean_database_cluster.postgres$"; then
               terraform import -var-file=env/dev.tfvars digitalocean_database_cluster.postgres "$DB_ID"
