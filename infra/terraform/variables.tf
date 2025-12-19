@@ -13,19 +13,25 @@ variable "environment" {
 variable "device_app_name" {
   description = "Name of the DigitalOcean App for device-service"
   type        = string
-  default     = "device-service-dev"
+  default     = "device-service"
 }
 
 variable "loan_app_name" {
   description = "Name of the DigitalOcean App for loan-service"
   type        = string
-  default     = "loan-service-dev"
+  default     = "loan-service"
 }
 
 variable "frontend_app_name" {
   description = "Name of the DigitalOcean App for the frontend"
   type        = string
-  default     = "campus-frontend-dev"
+  default     = "campus-frontend"
+}
+
+variable "do_project_name" {
+  description = "DigitalOcean Project name to group App Platform apps + database in the DO UI"
+  type        = string
+  default     = "campus-device-loan-project"
 }
 
 variable "app_region" {
@@ -43,7 +49,7 @@ variable "db_region" {
 variable "db_cluster_name" {
   description = "Name of the DigitalOcean managed Postgres cluster"
   type        = string
-  default     = "campus-device-loan-dev-db"
+  default     = "campus-device-loan-db"
 }
 
 variable "db_size" {

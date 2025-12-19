@@ -38,3 +38,13 @@ output "db_region" {
   description = "Region of the managed database"
   value       = digitalocean_database_cluster.postgres.region
 }
+
+output "do_project_id" {
+  description = "DigitalOcean Project ID used to group resources"
+  value       = digitalocean_project.main.id
+}
+
+output "do_project_name" {
+  description = "DigitalOcean Project name used to group resources"
+  value       = digitalocean_project.main.name
+}
