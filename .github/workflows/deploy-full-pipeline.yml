@@ -260,7 +260,7 @@ jobs:
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
         run: terraform plan
 
-      - name: Terraform apply (dev)
+      - name: Terraform apply
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
