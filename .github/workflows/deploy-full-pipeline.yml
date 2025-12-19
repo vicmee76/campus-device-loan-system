@@ -59,11 +59,15 @@ jobs:
             local tf_addr="$1"
             local app_name="$2"
             local app_id
-            app_id="$(echo "$APPS_JSON" | jq -r --arg n "$app_name" '.apps[] | select(.spec.name == $n) | .id' | head -n 1)"
+            # DO's API has returned either `.spec.name` or `.name` depending on endpoint/version.
+            app_id="$(echo "$APPS_JSON" | jq -r --arg n "$app_name" '.apps[] | select((.spec.name // .name) == $n) | .id' | head -n 1)"
             if [ -n "$app_id" ] && [ "$app_id" != "null" ]; then
               if ! terraform state list | grep -q "^${tf_addr}$"; then
                 terraform import -var-file=env/dev.tfvars "$tf_addr" "$app_id"
               fi
+            else
+              echo "WARN: No existing app found for name='${app_name}'. If it already exists, DO API response may differ; printing discovered app names:"
+              echo "$APPS_JSON" | jq -r '.apps[] | "- id=" + .id + " name=" + ((.spec.name // .name) // "<missing>")' || true
             fi
           }
 
