@@ -314,13 +314,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          # IMPORTANT: avoid `terraform output` here — it can emit warnings that corrupt $GITHUB_OUTPUT.
-          # Read values directly from state instead.
-          DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          # IMPORTANT:
+          # Avoid `terraform output` here — it can emit human warnings that corrupt $GITHUB_OUTPUT.
+          # Also avoid `terraform state show` — it fails when no state exists yet.
+          # Instead, pull raw state JSON and extract what we need with jq.
+          if ! STATE_JSON="$(terraform state pull 2>/dev/null)"; then
+            echo "ERROR: No Terraform state found yet (Terraform Cloud workspace has no state)."
+            echo "This usually means the first terraform apply did not run or failed."
+            exit 1
+          fi
+
+          DB_URL="$(echo "$STATE_JSON" | jq -r '
+            (.resources // [])
+            | map(select(.type=="digitalocean_database_cluster" and .name=="postgres"))
+            | .[0].instances[0].attributes.uri // empty
+          ')"
 
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
             echo "ERROR: Could not determine database_url from terraform state."
-            terraform state list || true
             exit 1
           fi
 
@@ -332,20 +343,32 @@ jobs:
             echo "${delim}"
           } >> "$GITHUB_OUTPUT"
 
-          DEVICE_APP_ID="$(terraform state show -no-color digitalocean_app.device | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          LOAN_APP_ID="$(terraform state show -no-color digitalocean_app.loan | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          FRONTEND_APP_ID="$(terraform state show -no-color digitalocean_app.frontend | awk -F'= ' '$1 ~ /^id$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          DEVICE_APP_ID="$(echo "$STATE_JSON" | jq -r '
+            (.resources // [])
+            | map(select(.type=="digitalocean_app" and .name=="device"))
+            | .[0].instances[0].attributes.id // empty
+          ')"
+          LOAN_APP_ID="$(echo "$STATE_JSON" | jq -r '
+            (.resources // [])
+            | map(select(.type=="digitalocean_app" and .name=="loan"))
+            | .[0].instances[0].attributes.id // empty
+          ')"
+          FRONTEND_APP_ID="$(echo "$STATE_JSON" | jq -r '
+            (.resources // [])
+            | map(select(.type=="digitalocean_app" and .name=="frontend"))
+            | .[0].instances[0].attributes.id // empty
+          ')"
 
           if [ -z "${DEVICE_APP_ID}" ] || [ "${DEVICE_APP_ID}" = "null" ]; then
-            echo "ERROR: terraform output device_app_id is empty"
+            echo "ERROR: Could not determine device_app_id from terraform state."
             exit 1
           fi
           if [ -z "${LOAN_APP_ID}" ] || [ "${LOAN_APP_ID}" = "null" ]; then
-            echo "ERROR: terraform output loan_app_id is empty"
+            echo "ERROR: Could not determine loan_app_id from terraform state."
             exit 1
           fi
           if [ -z "${FRONTEND_APP_ID}" ] || [ "${FRONTEND_APP_ID}" = "null" ]; then
-            echo "ERROR: terraform output frontend_app_id is empty"
+            echo "ERROR: Could not determine frontend_app_id from terraform state."
             exit 1
           fi
 
