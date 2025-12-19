@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Terraform Cloud auth for ALL terraform commands in this job (init/plan/apply/output/state)
-      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_app_terraform_io }}
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
     outputs:
       database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
@@ -124,7 +124,7 @@ jobs:
             app_id="$(find_app_id "$app_name" || true)"
             if [ -n "$app_id" ] && [ "$app_id" != "null" ]; then
               if ! terraform state show -no-color "$tf_addr" >/dev/null 2>&1; then
-                terraform import -var-file=env/dev.tfvars "$tf_addr" "$app_id"
+                terraform import "$tf_addr" "$app_id"
               fi
             else
               echo "WARN: No existing app found for name='${app_name}'."
@@ -146,7 +146,7 @@ jobs:
           DB_ID="$(echo "$DBS_JSON" | jq -r --arg n "${DB_CLUSTER_NAME}" '(.databases // [])[] | select(.name == $n) | .id' | head -n 1)"
           if [ -n "$DB_ID" ] && [ "$DB_ID" != "null" ]; then
             if ! terraform state list | grep -q "^digitalocean_database_cluster.postgres$"; then
-              terraform import -var-file=env/dev.tfvars digitalocean_database_cluster.postgres "$DB_ID"
+              terraform import digitalocean_database_cluster.postgres "$DB_ID"
             fi
           fi
 
@@ -154,13 +154,105 @@ jobs:
         working-directory: infra/terraform
         run: terraform validate
 
+      - name: Prepare dev auto tfvars (required for Terraform Cloud remote runs)
+        working-directory: infra/terraform
+        run: |
+          set -euo pipefail
+          cp env/dev.tfvars dev.auto.tfvars
+
+      - name: Sync Terraform Cloud workspace variables (from GitHub secrets)
+        working-directory: infra/terraform
+        env:
+          TFC_ORGANIZATION: ${{ env.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
+          TFC_TOKEN: ${{ env.TF_TOKEN_app_terraform_io }}
+          DO_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+        run: |
+          set -euo pipefail
+
+          : "${TFC_ORGANIZATION:?Missing TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing TFC_WORKSPACE}"
+          : "${TFC_TOKEN:?Missing TF_TOKEN_app_terraform_io / TF_TOKEN_APP_TERRAFORM_IO secret}"
+
+          echo "::add-mask::$DO_TOKEN"
+          echo "::add-mask::$JWT_SECRET"
+
+          API="https://app.terraform.io/api/v2"
+
+          WS_ID="$(curl -fsS \
+            -H "Authorization: Bearer ${TFC_TOKEN}" \
+            -H "Content-Type: application/vnd.api+json" \
+            "${API}/organizations/${TFC_ORGANIZATION}/workspaces/${TFC_WORKSPACE}" \
+            | jq -r '.data.id')"
+
+          if [ -z "${WS_ID}" ] || [ "${WS_ID}" = "null" ]; then
+            echo "ERROR: Could not resolve Terraform Cloud workspace id for ${TFC_ORGANIZATION}/${TFC_WORKSPACE}"
+            exit 1
+          fi
+
+          upsert_var () {
+            local key="$1"
+            local value="$2"
+            local sensitive="$3" # true/false
+            local category="$4"  # terraform/env
+
+            local vars_json var_id payload
+            vars_json="$(curl -fsS \
+              -H "Authorization: Bearer ${TFC_TOKEN}" \
+              -H "Content-Type: application/vnd.api+json" \
+              "${API}/workspaces/${WS_ID}/vars")"
+
+            var_id="$(echo "$vars_json" | jq -r --arg k "$key" --arg c "$category" '(.data // [])[] | select(.attributes.key == $k and .attributes.category == $c) | .id' | head -n 1)"
+
+            payload="$(jq -n \
+              --arg key "$key" \
+              --arg value "$value" \
+              --arg category "$category" \
+              --argjson sensitive "$( [ "$sensitive" = "true" ] && echo true || echo false )" \
+              '{
+                data: {
+                  type: "vars",
+                  attributes: {
+                    key: $key,
+                    value: $value,
+                    category: $category,
+                    hcl: false,
+                    sensitive: $sensitive
+                  }
+                }
+              }')"
+
+            if [ -n "$var_id" ] && [ "$var_id" != "null" ]; then
+              curl -fsS -X PATCH \
+                -H "Authorization: Bearer ${TFC_TOKEN}" \
+                -H "Content-Type: application/vnd.api+json" \
+                -d "$payload" \
+                "${API}/vars/${var_id}" >/dev/null
+              echo "Updated Terraform Cloud var: ${category}.${key}"
+            else
+              curl -fsS -X POST \
+                -H "Authorization: Bearer ${TFC_TOKEN}" \
+                -H "Content-Type: application/vnd.api+json" \
+                -d "$payload" \
+                "${API}/workspaces/${WS_ID}/vars" >/dev/null
+              echo "Created Terraform Cloud var: ${category}.${key}"
+            fi
+          }
+
+          # These are Terraform input variables used by this configuration.
+          upsert_var "do_token"        "$DO_TOKEN"       "true"  "terraform"
+          upsert_var "jwt_secret"      "$JWT_SECRET"     "true"  "terraform"
+          upsert_var "jwt_expires_in"  "$JWT_EXPIRES_IN" "false" "terraform"
+
       - name: Terraform plan
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
-        run: terraform plan -var-file=env/dev.tfvars
+        run: terraform plan
 
       - name: Terraform apply (dev)
         working-directory: infra/terraform
@@ -168,7 +260,7 @@ jobs:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
-        run: terraform apply -auto-approve -var-file=env/dev.tfvars
+        run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (for downstream jobs)
         id: tf_outputs
