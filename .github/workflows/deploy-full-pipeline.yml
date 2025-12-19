@@ -295,6 +295,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
+            exit 1
+          fi
+
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -308,14 +343,14 @@ jobs:
       - name: Run migrations
         working-directory: database
         env:
-          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: npm run migrate:latest
 
       # ---- Seed database IF EMPTY (single source of truth) ----
       - name: Seed database if empty
         working-directory: database
         env:
-          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: |
           cat > seed-if-empty.js << 'SCRIPT_EOF'
           require('ts-node/register');
@@ -361,6 +396,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
+            exit 1
+          fi
+
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -377,7 +447,7 @@ jobs:
       - name: Run integration tests
         working-directory: backend/device-service
         env:
-          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: npm run test:integration
 
       - name: Build project
@@ -414,6 +484,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Terraform (for reading remote state)
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Read DATABASE_URL from Terraform Cloud state
+        working-directory: infra/terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+          TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+        run: |
+          set -euo pipefail
+          : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+
+          cat > backend.hcl <<EOF
+          organization = "${TFC_ORGANIZATION}"
+          workspaces {
+            name = "${TFC_WORKSPACE}"
+          }
+          EOF
+
+          terraform init -backend-config=backend.hcl
+
+          DB_URL="$(terraform output -raw database_url)"
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
+            exit 1
+          fi
+
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -430,7 +535,7 @@ jobs:
       - name: Run integration tests
         working-directory: backend/loan-service
         env:
-          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: npm run test:integration
 
       - name: Build project
