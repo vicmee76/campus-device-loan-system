@@ -31,7 +31,8 @@ variable "frontend_app_name" {
 variable "region" {
   description = "DigitalOcean region"
   type        = string
-  default     = "nyc"
+  # Use London by default; some smaller DB sizes are occasionally capacity-constrained in NYC.
+  default = "lon1"
 }
 
 variable "db_cluster_name" {
