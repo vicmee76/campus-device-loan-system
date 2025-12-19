@@ -252,20 +252,35 @@ jobs:
           upsert_var "jwt_secret"      "$JWT_SECRET"     "true"  "terraform"
           upsert_var "jwt_expires_in"  "$JWT_EXPIRES_IN" "false" "terraform"
 
-      - name: Terraform plan
+      - name: Terraform plan (detect changes)
+        id: tf_plan
         working-directory: infra/terraform
-        env:
-          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
-          TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
-        run: terraform plan
+        run: |
+          set -euo pipefail
+
+          # Exit codes:
+          # - 0 = no changes
+          # - 2 = changes present
+          # - 1 = error
+          set +e
+          terraform plan -detailed-exitcode
+          ec="$?"
+          set -e
+
+          if [ "$ec" -eq 1 ]; then
+            echo "Terraform plan failed"
+            exit 1
+          fi
+
+          if [ "$ec" -eq 2 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Terraform apply
+        if: steps.tf_plan.outputs.has_changes == 'true'
         working-directory: infra/terraform
-        env:
-          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
-          TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
         run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (for downstream jobs)
