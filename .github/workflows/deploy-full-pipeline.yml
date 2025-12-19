@@ -289,13 +289,59 @@ jobs:
         run: |
           set -euo pipefail
 
-          DB_URL="$(terraform output -raw database_url)"
-          if [ -z "${DB_URL}" ]; then
-            echo "ERROR: terraform output database_url is empty. This usually means the DB cluster wasn't created/imported correctly, or outputs were not updated in state."
+          # On a new Terraform Cloud workspace, imports can succeed while `apply` is skipped (plan shows no changes).
+          # In that case, outputs may not be written into state yet. If the output isn't a valid DB URL, run a
+          # refresh-only apply to populate outputs, then try again.
+          set +e
+          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
+          ec="$?"
+          set -e
+
+          needs_refresh="false"
+          if [ "$ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            needs_refresh="true"
+          fi
+
+          # Guard against capturing warnings/errors as the "URL"
+          case "$DB_URL" in
+            *$'\n'*|*$'\r'*)
+              needs_refresh="true"
+              ;;
+            postgres://*|postgresql://*)
+              ;;
+            *)
+              needs_refresh="true"
+              ;;
+          esac
+
+          if [ "$needs_refresh" = "true" ]; then
+            echo "database_url output not available/valid yet. Running refresh-only apply to populate outputs..."
+            terraform apply -refresh-only -auto-approve
+            DB_URL="$(terraform output -raw database_url 2>/dev/null || true)"
+          fi
+
+          # Final validation before exporting to GitHub outputs.
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            echo "ERROR: terraform output database_url is empty after refresh. This usually means the DB cluster wasn't created/imported correctly, or outputs were not updated in state."
             terraform output || true
             terraform state list || true
             exit 1
           fi
+
+          case "$DB_URL" in
+            *$'\n'*|*$'\r'*)
+              echo "ERROR: terraform output database_url contains newlines. Refusing to export it."
+              terraform output || true
+              exit 1
+              ;;
+            postgres://*|postgresql://*)
+              ;;
+            *)
+              echo "ERROR: terraform output database_url does not look like a Postgres URL. Refusing to export it."
+              terraform output || true
+              exit 1
+              ;;
+          esac
 
           echo "::add-mask::$DB_URL"
           {
@@ -341,12 +387,31 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
+          set +e
           DB_URL="$(terraform output -raw database_url)"
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+          ec="$?"
+          set -e
+
+          if [ "$ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
             echo "ERROR: terraform output database_url is empty"
             terraform output || true
             exit 1
           fi
+
+          case "$DB_URL" in
+            *$'\n'*|*$'\r'*)
+              echo "ERROR: DATABASE_URL contains newlines. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+            postgres://*|postgresql://*)
+              ;;
+            *)
+              echo "ERROR: DATABASE_URL does not look like a Postgres URL. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -442,12 +507,31 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
+          set +e
           DB_URL="$(terraform output -raw database_url)"
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+          ec="$?"
+          set -e
+
+          if [ "$ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
             echo "ERROR: terraform output database_url is empty"
             terraform output || true
             exit 1
           fi
+
+          case "$DB_URL" in
+            *$'\n'*|*$'\r'*)
+              echo "ERROR: DATABASE_URL contains newlines. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+            postgres://*|postgresql://*)
+              ;;
+            *)
+              echo "ERROR: DATABASE_URL does not look like a Postgres URL. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -530,12 +614,31 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
+          set +e
           DB_URL="$(terraform output -raw database_url)"
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+          ec="$?"
+          set -e
+
+          if [ "$ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
             echo "ERROR: terraform output database_url is empty"
             terraform output || true
             exit 1
           fi
+
+          case "$DB_URL" in
+            *$'\n'*|*$'\r'*)
+              echo "ERROR: DATABASE_URL contains newlines. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+            postgres://*|postgresql://*)
+              ;;
+            *)
+              echo "ERROR: DATABASE_URL does not look like a Postgres URL. Refusing to write to GITHUB_ENV."
+              terraform output || true
+              exit 1
+              ;;
+          esac
 
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
