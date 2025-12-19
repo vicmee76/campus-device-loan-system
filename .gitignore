@@ -1,0 +1,9 @@
+# Terraform (never commit state)
+**/.terraform/**
+**/*.tfstate
+**/*.tfstate.*
+
+# Backend config generated in CI (contains bucket/key/endpoint)
+**/backend.hcl
+
+
