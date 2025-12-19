@@ -304,19 +304,32 @@ jobs:
         run: |
           set -euo pipefail
 
-          DB_URL="$(terraform output -raw database_url)"
-          if [ -z "${DB_URL}" ]; then
-            echo "ERROR: terraform output database_url is empty. This usually means the DB cluster wasn't created/imported correctly, or outputs were not updated in state."
-            terraform output || true
+          # NOTE:
+          # `terraform output` can print human-formatted warnings (sometimes to stdout),
+          # which will corrupt $GITHUB_OUTPUT if we capture/echo it. So we suppress stderr
+          # and fall back to reading values directly from state when outputs are missing.
+
+          set +e
+          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
+          db_ec="$?"
+          set -e
+
+          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          fi
+
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            echo "ERROR: Could not determine database_url from terraform outputs or state."
             terraform state list || true
             exit 1
           fi
 
           echo "::add-mask::$DB_URL"
+          delim="EOF_DB_URL_${RANDOM}_${RANDOM}"
           {
-            echo "database_url<<EOF"
+            echo "database_url<<${delim}"
             echo "$DB_URL"
-            echo "EOF"
+            echo "${delim}"
           } >> "$GITHUB_OUTPUT"
 
           # App IDs: prefer Terraform outputs (if present), but fall back to reading resource IDs from state.
@@ -391,10 +404,18 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
-          DB_URL="$(terraform output -raw database_url)"
+          set +e
+          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
+          db_ec="$?"
+          set -e
+
+          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          fi
+
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: terraform output database_url is empty"
-            terraform output || true
+            echo "ERROR: Could not determine database_url from terraform outputs or state."
+            terraform state list || true
             exit 1
           fi
 
@@ -492,10 +513,18 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
-          DB_URL="$(terraform output -raw database_url)"
+          set +e
+          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
+          db_ec="$?"
+          set -e
+
+          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
+          fi
+
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: terraform output database_url is empty"
-            terraform output || true
+            echo "ERROR: Could not determine database_url from terraform outputs or state."
+            terraform state list || true
             exit 1
           fi
 
