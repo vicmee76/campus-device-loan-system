@@ -289,11 +289,12 @@ jobs:
         run: terraform apply -auto-approve
 
       # Important: On a brand-new workspace we may only import (no config drift), so plan=0 and apply would be skipped.
-      # However, Terraform outputs aren't reliably written into state until an apply/refresh cycle runs.
-      - name: Terraform apply (refresh-only to finalize imported state + outputs)
+      # However, Terraform outputs aren't written into state until an apply runs that evaluates them.
+      # We need a FULL apply (not refresh-only) to properly initialize outputs after import.
+      - name: Terraform apply (finalize imported state + outputs)
         if: steps.tf_plan.outputs.has_changes == 'false' && steps.bootstrap_import.outputs.import_ran == 'true'
         working-directory: infra/terraform
-        run: terraform apply -refresh-only -auto-approve
+        run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (for downstream jobs)
         id: tf_outputs
