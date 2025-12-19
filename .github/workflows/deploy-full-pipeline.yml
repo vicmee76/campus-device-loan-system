@@ -324,14 +324,24 @@ jobs:
             exit 1
           fi
 
-          DB_URL="$(echo "$STATE_JSON" | jq -r '
-            (.resources // [])
-            | map(select(.type=="digitalocean_database_cluster" and .name=="postgres"))
-            | .[0].instances[0].attributes.uri // empty
-          ')"
+          # Prefer outputs if they exist (most reliable across provider versions).
+          DB_URL="$(echo "$STATE_JSON" | jq -r '.outputs.database_url.value // empty')"
+
+          # Fallback: read from the DB cluster resource attributes (uri/private_uri).
+          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
+            DB_URL="$(echo "$STATE_JSON" | jq -r '
+              (.resources // [])
+              | map(select(.type=="digitalocean_database_cluster" and .name=="postgres"))
+              | .[0].instances[0].attributes.uri
+                // .[0].instances[0].attributes.private_uri
+                // empty
+            ')"
+          fi
 
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
             echo "ERROR: Could not determine database_url from terraform state."
+            echo "INFO: Resources present in state (type.name):"
+            echo "$STATE_JSON" | jq -r '(.resources // [])[]? | "\(.type).\(.name)"' | head -n 50 || true
             exit 1
           fi
 
