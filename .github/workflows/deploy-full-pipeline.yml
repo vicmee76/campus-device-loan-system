@@ -66,6 +66,7 @@ jobs:
         run: terraform init -backend-config=backend.hcl
 
       - name: Import existing DO resources (avoid name already exists)
+        id: bootstrap_import
         working-directory: infra/terraform
         env:
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
@@ -78,8 +79,12 @@ jobs:
           # If remote state already has resources, skip bootstrap imports.
           if terraform state list >/dev/null 2>&1 && [ "$(terraform state list | wc -l | tr -d ' ')" -gt 0 ]; then
             echo "Terraform state already populated → skipping import bootstrap"
+            echo "import_ran=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # State is empty → we will attempt imports (best-effort).
+          echo "import_ran=true" >> "$GITHUB_OUTPUT"
 
           # Import Apps by name (if they already exist in your DO account).
           # NOTE: The list endpoint can be paginated AND often does not include spec.name,
@@ -278,10 +283,17 @@ jobs:
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Terraform apply
+      - name: Terraform apply (create/update)
         if: steps.tf_plan.outputs.has_changes == 'true'
         working-directory: infra/terraform
         run: terraform apply -auto-approve
+
+      # Important: On a brand-new workspace we may only import (no config drift), so plan=0 and apply would be skipped.
+      # However, Terraform outputs aren't reliably written into state until an apply/refresh cycle runs.
+      - name: Terraform apply (refresh-only to finalize imported state + outputs)
+        if: steps.tf_plan.outputs.has_changes == 'false' && steps.bootstrap_import.outputs.import_ran == 'true'
+        working-directory: infra/terraform
+        run: terraform apply -refresh-only -auto-approve
 
       - name: Export Terraform outputs (for downstream jobs)
         id: tf_outputs
