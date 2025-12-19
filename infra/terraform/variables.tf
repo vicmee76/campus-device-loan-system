@@ -34,10 +34,46 @@ variable "region" {
   default     = "nyc"
 }
 
-variable "database_url" {
-  description = "Supabase PostgreSQL connection string"
+variable "db_cluster_name" {
+  description = "Name of the DigitalOcean managed Postgres cluster"
   type        = string
-  sensitive   = true
+  default     = "campus-device-loan-dev-db"
+}
+
+variable "db_name" {
+  description = "Database name to create inside the cluster"
+  type        = string
+  default     = "campus_device_loan"
+}
+
+variable "db_user" {
+  description = "Application database user to create"
+  type        = string
+  default     = "appuser"
+}
+
+variable "db_size" {
+  description = "DigitalOcean managed database size slug (cheapest is typically db-s-1vcpu-1gb)"
+  type        = string
+  default     = "db-s-1vcpu-1gb"
+}
+
+variable "db_node_count" {
+  description = "Number of nodes (keep 1 for cheapest)"
+  type        = number
+  default     = 1
+}
+
+variable "db_engine_version" {
+  description = "PostgreSQL major version (optional)"
+  type        = string
+  default     = "16"
+}
+
+variable "db_allow_public_access" {
+  description = "If true, opens the DB firewall to the public internet (dev-only). Required for GitHub Actions runners + App Platform to connect without VPC plumbing."
+  type        = bool
+  default     = true
 }
 
 variable "jwt_secret" {

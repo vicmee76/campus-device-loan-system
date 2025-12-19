@@ -23,6 +23,8 @@ jobs:
   terraform:
     name: Terraform (Provision Apps)
     runs-on: ubuntu-latest
+    outputs:
+      database_url: ${{ steps.tf_outputs.outputs.database_url }}
 
     steps:
       - name: Checkout code
@@ -47,7 +49,6 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
         run: terraform plan -var-file=env/dev.tfvars
@@ -56,10 +57,17 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
-          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
         run: terraform apply -auto-approve -var-file=env/dev.tfvars
+
+      - name: Export Terraform outputs (for downstream jobs)
+        id: tf_outputs
+        working-directory: infra/terraform
+        run: |
+          DB_URL="$(terraform output -raw database_url)"
+          echo "::add-mask::$DB_URL"
+          echo "database_url=$DB_URL" >> "$GITHUB_OUTPUT"
 
 # =========================================================
 # 1️⃣ DATABASE – Migrations & Deterministic Seeding
@@ -86,18 +94,14 @@ jobs:
       - name: Run migrations
         working-directory: database
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
-          NODE_OPTIONS: "--dns-result-order=ipv4first"
+          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
         run: npm run migrate:latest
 
       # ---- Seed database IF EMPTY (single source of truth) ----
       - name: Seed database if empty
         working-directory: database
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
-          NODE_OPTIONS: "--dns-result-order=ipv4first"
+          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
         run: |
           cat > seed-if-empty.js << 'SCRIPT_EOF'
           require('ts-node/register');
@@ -159,8 +163,7 @@ jobs:
       - name: Run integration tests
         working-directory: backend/device-service
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
+          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
         run: npm run test:integration
 
       - name: Build project
@@ -213,8 +216,7 @@ jobs:
       - name: Run integration tests
         working-directory: backend/loan-service
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0"
+          DATABASE_URL: ${{ needs.terraform.outputs.database_url }}
         run: npm run test:integration
 
       - name: Build project

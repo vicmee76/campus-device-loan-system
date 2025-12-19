@@ -1,4 +1,8 @@
 resource "digitalocean_app" "device" {
+  depends_on = [
+    digitalocean_database_cluster.postgres
+  ]
+
   spec {
     name   = var.device_app_name
     region = var.region
@@ -20,11 +24,11 @@ resource "digitalocean_app" "device" {
 
       env {
         key   = "DATABASE_URL"
-        value = var.database_url
+        value = local.database_url
         type  = "SECRET"
       }
 
-      # Prefer IPv4 when resolving Supabase hostnames (avoids IPv6 EHOSTUNREACH on some DO App Platform egress paths)
+      # Prefer IPv4 if DNS returns dualstack records (safety).
       env {
         key   = "NODE_OPTIONS"
         value = "--dns-result-order=ipv4first"
@@ -49,6 +53,10 @@ resource "digitalocean_app" "device" {
 }
 
 resource "digitalocean_app" "loan" {
+  depends_on = [
+    digitalocean_database_cluster.postgres
+  ]
+
   spec {
     name   = var.loan_app_name
     region = var.region
@@ -70,11 +78,11 @@ resource "digitalocean_app" "loan" {
 
       env {
         key   = "DATABASE_URL"
-        value = var.database_url
+        value = local.database_url
         type  = "SECRET"
       }
 
-      # Prefer IPv4 when resolving Supabase hostnames (avoids IPv6 EHOSTUNREACH on some DO App Platform egress paths)
+      # Prefer IPv4 if DNS returns dualstack records (safety).
       env {
         key   = "NODE_OPTIONS"
         value = "--dns-result-order=ipv4first"

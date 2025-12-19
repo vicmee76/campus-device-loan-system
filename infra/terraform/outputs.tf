@@ -22,3 +22,14 @@ output "frontend_url" {
   description = "URL of the frontend"
   value       = digitalocean_app.frontend.default_ingress
 }
+
+output "database_url" {
+  description = "DigitalOcean Postgres connection string for the app user (use for migrations and services)"
+  value       = local.database_url
+  sensitive   = true
+}
+
+output "database_host" {
+  description = "Database host"
+  value       = digitalocean_database_cluster.postgres.host
+}
