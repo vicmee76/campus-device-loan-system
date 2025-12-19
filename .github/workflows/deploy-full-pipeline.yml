@@ -1,10 +1,15 @@
 name: Full Deployment Pipeline
 
-on:
+"on":
   workflow_dispatch:
   push:
     branches:
       - main
+
+env:
+  DEVICE_APP_NAME: device-service-dev
+  LOAN_APP_NAME: loan-service-dev
+  FRONTEND_APP_NAME: campus-frontend-dev
 
 jobs:
 # =========================================================
@@ -13,11 +18,56 @@ jobs:
 # =========================================================
 
 # =========================================================
+# 0️⃣ TERRAFORM – Provision DigitalOcean App Platform Apps
+# =========================================================
+  terraform:
+    name: Terraform (Provision Apps)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform init
+        working-directory: infra/terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: infra/terraform
+        run: terraform validate
+
+      - name: Terraform plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
+        run: terraform plan -var-file=env/dev.tfvars
+
+      - name: Terraform apply (dev)
+        working-directory: infra/terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
+        run: terraform apply -auto-approve -var-file=env/dev.tfvars
+
+# =========================================================
 # 1️⃣ DATABASE – Migrations & Deterministic Seeding
 # =========================================================
   database:
     name: Database Setup
     runs-on: ubuntu-latest
+    needs: terraform
 
     steps:
       - name: Checkout code
@@ -117,10 +167,20 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
+          APP_ID=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.DEVICE_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${DEVICE_APP_NAME}"
+            exit 1
+          fi
+
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ secrets.DEVICE_APP_ID }}/deployments
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 
 
 # =========================================================
@@ -161,10 +221,20 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
+          APP_ID=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.LOAN_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${LOAN_APP_NAME}"
+            exit 1
+          fi
+
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ secrets.LOAN_APP_ID }}/deployments
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 
 
 # =========================================================
@@ -198,8 +268,18 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
+          APP_ID=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.FRONTEND_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${FRONTEND_APP_NAME}"
+            exit 1
+          fi
+
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ secrets.FRONTEND_APP_ID }}/deployments
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 

@@ -75,10 +75,10 @@ export class EmailService {
     });
 
     try {
-      // Simulate potential failures for testing
-      if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
-        throw new Error('Email service temporarily unavailable');
-      }
+    // Simulate potential failures for testing
+    if (process.env.SIMULATE_EMAIL_FAILURE === 'true') {
+      throw new Error('Email service temporarily unavailable');
+    }
 
       // Create email notification using repository
       const emailRecord = await emailNotificationRepository.create(
