@@ -28,29 +28,22 @@ variable "frontend_app_name" {
   default     = "campus-frontend-dev"
 }
 
-variable "region" {
-  description = "DigitalOcean region"
+variable "app_region" {
+  description = "DigitalOcean region for App Platform apps"
   type        = string
-  # Use London by default; some smaller DB sizes are occasionally capacity-constrained in NYC.
-  default = "lon1"
+  default     = "nyc"
+}
+
+variable "db_region" {
+  description = "DigitalOcean region for the managed Postgres database"
+  type        = string
+  default     = "lon1"
 }
 
 variable "db_cluster_name" {
   description = "Name of the DigitalOcean managed Postgres cluster"
   type        = string
   default     = "campus-device-loan-dev-db"
-}
-
-variable "db_name" {
-  description = "Database name to create inside the cluster"
-  type        = string
-  default     = "campus_device_loan"
-}
-
-variable "db_user" {
-  description = "Application database user to create"
-  type        = string
-  default     = "appuser"
 }
 
 variable "db_size" {
@@ -69,12 +62,6 @@ variable "db_engine_version" {
   description = "PostgreSQL major version (optional)"
   type        = string
   default     = "16"
-}
-
-variable "db_allow_public_access" {
-  description = "If true, opens the DB firewall to the public internet (dev-only). Required for GitHub Actions runners + App Platform to connect without VPC plumbing."
-  type        = bool
-  default     = true
 }
 
 variable "jwt_secret" {

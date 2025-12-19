@@ -10,6 +10,7 @@ env:
   DEVICE_APP_NAME: device-service-dev
   LOAN_APP_NAME: loan-service-dev
   FRONTEND_APP_NAME: campus-frontend-dev
+  DB_CLUSTER_NAME: campus-device-loan-dev-db
 
 jobs:
 # =========================================================
@@ -40,6 +41,44 @@ jobs:
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
         run: terraform init
+
+      - name: Import existing DO resources (avoid name already exists)
+        working-directory: infra/terraform
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
+        run: |
+          set -euo pipefail
+
+          # Import Apps by name (if they already exist in your DO account)
+          APPS_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/apps?per_page=200)"
+
+          import_app () {
+            local tf_addr="$1"
+            local app_name="$2"
+            local app_id
+            app_id="$(echo "$APPS_JSON" | jq -r --arg n "$app_name" '.apps[] | select(.spec.name == $n) | .id' | head -n 1)"
+            if [ -n "$app_id" ] && [ "$app_id" != "null" ]; then
+              if ! terraform state list | grep -q "^${tf_addr}$"; then
+                terraform import -var-file=env/dev.tfvars "$tf_addr" "$app_id"
+              fi
+            fi
+          }
+
+          import_app "digitalocean_app.device"   "${DEVICE_APP_NAME}"
+          import_app "digitalocean_app.loan"     "${LOAN_APP_NAME}"
+          import_app "digitalocean_app.frontend" "${FRONTEND_APP_NAME}"
+
+          # Import DB cluster by name (if it already exists)
+          DBS_JSON="$(curl -s -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/databases?per_page=200)"
+          DB_ID="$(echo "$DBS_JSON" | jq -r --arg n "${DB_CLUSTER_NAME}" '.databases[] | select(.name == $n) | .id' | head -n 1)"
+          if [ -n "$DB_ID" ] && [ "$DB_ID" != "null" ]; then
+            if ! terraform state list | grep -q "^digitalocean_database_cluster.postgres$"; then
+              terraform import -var-file=env/dev.tfvars digitalocean_database_cluster.postgres "$DB_ID"
+            fi
+          fi
 
       - name: Terraform validate
         working-directory: infra/terraform

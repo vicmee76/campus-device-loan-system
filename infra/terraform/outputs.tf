@@ -33,3 +33,8 @@ output "database_host" {
   description = "Database host"
   value       = digitalocean_database_cluster.postgres.host
 }
+
+output "db_region" {
+  description = "Region of the managed database"
+  value       = digitalocean_database_cluster.postgres.region
+}
