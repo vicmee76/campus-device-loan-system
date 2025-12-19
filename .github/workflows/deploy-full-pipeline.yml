@@ -2,28 +2,21 @@ name: Full Deployment Pipeline
 
 "on":
   workflow_dispatch:
-    inputs:
-      deploy_env:
-        description: "Environment to deploy (dev or prod)"
-        required: true
-        default: "dev"
-        type: choice
-        options:
-          - dev
-          - prod
   push:
     branches:
       - main
 
 env:
-  DEPLOY_ENV: ${{ github.event.inputs.deploy_env || 'dev' }}
-  DEVICE_APP_NAME: device-service-${{ github.event.inputs.deploy_env || 'dev' }}
-  LOAN_APP_NAME: loan-service-${{ github.event.inputs.deploy_env || 'dev' }}
-  FRONTEND_APP_NAME: campus-frontend-${{ github.event.inputs.deploy_env || 'dev' }}
-  DB_CLUSTER_NAME: campus-device-loan-db-${{ github.event.inputs.deploy_env || 'dev' }}
+  DEVICE_APP_NAME: device-service
+  LOAN_APP_NAME: loan-service
+  FRONTEND_APP_NAME: campus-frontend
+  DB_CLUSTER_NAME: campus-device-loan-db
   # Terraform Cloud (remote state)
   TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-  TFC_WORKSPACE: ${{ (github.event.inputs.deploy_env || 'dev') == 'prod' && vars.TFC_PROD_WORKSPACE || vars.TFC_DEV_WORKSPACE }}
+  # Source-of-truth GitHub variable is TFC_DEV_WORKSPACE; keep TFC_WORKSPACE as an alias
+  # so the rest of this workflow + shell snippets can remain unchanged.
+  TFC_DEV_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
+  TFC_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
 
 jobs:
 # =========================================================
@@ -37,15 +30,11 @@ jobs:
   terraform:
     name: Terraform (Provision Apps)
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.deploy_env || 'dev' }}
     env:
       # Terraform Cloud auth for ALL terraform commands in this job (init/plan/apply/output/state)
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
     outputs:
       database_url: ${{ steps.tf_outputs.outputs.database_url }}
-      device_app_id: ${{ steps.tf_outputs.outputs.device_app_id }}
-      loan_app_id: ${{ steps.tf_outputs.outputs.loan_app_id }}
-      frontend_app_id: ${{ steps.tf_outputs.outputs.frontend_app_id }}
 
     steps:
       - name: Checkout code
@@ -64,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_DEV_WORKSPACE}"
 
           cat > backend.hcl <<EOF
           organization = "${TFC_ORGANIZATION}"
@@ -174,12 +163,11 @@ jobs:
         working-directory: infra/terraform
         run: terraform validate
 
-      - name: Prepare env auto tfvars (required for Terraform Cloud remote runs)
+      - name: Prepare dev auto tfvars (required for Terraform Cloud remote runs)
         working-directory: infra/terraform
         run: |
           set -euo pipefail
-          rm -f *.auto.tfvars
-          cp "env/${DEPLOY_ENV}.tfvars" env.auto.tfvars
+          cp env/dev.tfvars dev.auto.tfvars
 
       - name: Sync Terraform Cloud workspace variables (from GitHub secrets)
         working-directory: infra/terraform
@@ -194,7 +182,7 @@ jobs:
           set -euo pipefail
 
           : "${TFC_ORGANIZATION:?Missing TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing TFC_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing TFC_DEV_WORKSPACE (exposed to this job as TFC_WORKSPACE)}"
           : "${TFC_TOKEN:?Missing TF_TOKEN_app_terraform_io / TF_TOKEN_APP_TERRAFORM_IO secret}"
 
           echo "::add-mask::$DO_TOKEN"
@@ -273,16 +261,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # If state is empty (first run / new workspace), we must run apply at least once
-          # so resources and state outputs exist.
-          # `terraform state list` can exit non-zero when no state exists yet; treat that as empty.
-          state_count="$( (terraform state list 2>/dev/null || true) | wc -l | tr -d ' ' )"
-          if [ "${state_count}" -eq 0 ]; then
-            echo "state_empty=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "state_empty=false" >> "$GITHUB_OUTPUT"
-          fi
-
           # Exit codes:
           # - 0 = no changes
           # - 2 = changes present
@@ -304,7 +282,7 @@ jobs:
           fi
 
       - name: Terraform apply
-        if: steps.tf_plan.outputs.has_changes == 'true' || steps.tf_plan.outputs.state_empty == 'true'
+        if: steps.tf_plan.outputs.has_changes == 'true'
         working-directory: infra/terraform
         run: terraform apply -auto-approve
 
@@ -314,77 +292,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          # IMPORTANT:
-          # Avoid `terraform output` here — it can emit human warnings that corrupt $GITHUB_OUTPUT.
-          # Also avoid `terraform state show` — it fails when no state exists yet.
-          # Instead, pull raw state JSON and extract what we need with jq.
-          if ! STATE_JSON="$(terraform state pull 2>/dev/null)"; then
-            echo "ERROR: No Terraform state found yet (Terraform Cloud workspace has no state)."
-            echo "This usually means the first terraform apply did not run or failed."
-            exit 1
-          fi
-
-          # Prefer outputs if they exist (most reliable across provider versions).
-          DB_URL="$(echo "$STATE_JSON" | jq -r '.outputs.database_url.value // empty')"
-
-          # Fallback: read from the DB cluster resource attributes (uri/private_uri).
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            DB_URL="$(echo "$STATE_JSON" | jq -r '
-              (.resources // [])
-              | map(select(.type=="digitalocean_database_cluster" and .name=="postgres"))
-              | .[0].instances[0].attributes.uri
-                // .[0].instances[0].attributes.private_uri
-                // empty
-            ')"
-          fi
-
-          if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: Could not determine database_url from terraform state."
-            echo "INFO: Resources present in state (type.name):"
-            echo "$STATE_JSON" | jq -r '(.resources // [])[]? | "\(.type).\(.name)"' | head -n 50 || true
+          DB_URL="$(terraform output -raw database_url)"
+          if [ -z "${DB_URL}" ]; then
+            echo "ERROR: terraform output database_url is empty. This usually means the DB cluster wasn't created/imported correctly, or outputs were not updated in state."
+            terraform output || true
+            terraform state list || true
             exit 1
           fi
 
           echo "::add-mask::$DB_URL"
-          delim="EOF_DB_URL_${RANDOM}_${RANDOM}"
           {
-            echo "database_url<<${delim}"
+            echo "database_url<<EOF"
             echo "$DB_URL"
-            echo "${delim}"
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
-
-          DEVICE_APP_ID="$(echo "$STATE_JSON" | jq -r '
-            (.resources // [])
-            | map(select(.type=="digitalocean_app" and .name=="device"))
-            | .[0].instances[0].attributes.id // empty
-          ')"
-          LOAN_APP_ID="$(echo "$STATE_JSON" | jq -r '
-            (.resources // [])
-            | map(select(.type=="digitalocean_app" and .name=="loan"))
-            | .[0].instances[0].attributes.id // empty
-          ')"
-          FRONTEND_APP_ID="$(echo "$STATE_JSON" | jq -r '
-            (.resources // [])
-            | map(select(.type=="digitalocean_app" and .name=="frontend"))
-            | .[0].instances[0].attributes.id // empty
-          ')"
-
-          if [ -z "${DEVICE_APP_ID}" ] || [ "${DEVICE_APP_ID}" = "null" ]; then
-            echo "ERROR: Could not determine device_app_id from terraform state."
-            exit 1
-          fi
-          if [ -z "${LOAN_APP_ID}" ] || [ "${LOAN_APP_ID}" = "null" ]; then
-            echo "ERROR: Could not determine loan_app_id from terraform state."
-            exit 1
-          fi
-          if [ -z "${FRONTEND_APP_ID}" ] || [ "${FRONTEND_APP_ID}" = "null" ]; then
-            echo "ERROR: Could not determine frontend_app_id from terraform state."
-            exit 1
-          fi
-
-          echo "device_app_id=${DEVICE_APP_ID}" >> "$GITHUB_OUTPUT"
-          echo "loan_app_id=${LOAN_APP_ID}" >> "$GITHUB_OUTPUT"
-          echo "frontend_app_id=${FRONTEND_APP_ID}" >> "$GITHUB_OUTPUT"
 
 # =========================================================
 # 1️⃣ DATABASE – Migrations & Deterministic Seeding
@@ -408,11 +329,11 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_DEV_WORKSPACE}"
 
           cat > backend.hcl <<EOF
           organization = "${TFC_ORGANIZATION}"
@@ -423,18 +344,10 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
-          set +e
-          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
-          db_ec="$?"
-          set -e
-
-          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
-
+          DB_URL="$(terraform output -raw database_url)"
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: Could not determine database_url from terraform outputs or state."
-            terraform state list || true
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
             exit 1
           fi
 
@@ -517,11 +430,11 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_DEV_WORKSPACE}"
 
           cat > backend.hcl <<EOF
           organization = "${TFC_ORGANIZATION}"
@@ -532,18 +445,10 @@ jobs:
 
           terraform init -backend-config=backend.hcl
 
-          set +e
-          DB_URL="$(terraform output -raw database_url 2>/dev/null)"
-          db_ec="$?"
-          set -e
-
-          if [ "$db_ec" -ne 0 ] || [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            DB_URL="$(terraform state show -no-color digitalocean_database_cluster.postgres | awk -F'= ' '$1 ~ /^uri$/ {gsub(/\"/,"",$2); print $2; exit}')"
-          fi
-
+          DB_URL="$(terraform output -raw database_url)"
           if [ -z "${DB_URL}" ] || [ "${DB_URL}" = "null" ]; then
-            echo "ERROR: Could not determine database_url from terraform outputs or state."
-            terraform state list || true
+            echo "ERROR: terraform output database_url is empty"
+            terraform output || true
             exit 1
           fi
 
@@ -575,10 +480,20 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          curl -fsS -X POST \
+          APP_ID=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.device_app_id }}/deployments
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.DEVICE_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${DEVICE_APP_NAME}"
+            exit 1
+          fi
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 
 
 # =========================================================
@@ -603,11 +518,11 @@ jobs:
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
           TFC_ORGANIZATION: ${{ vars.TFC_ORGANIZATION }}
-          TFC_WORKSPACE: ${{ env.TFC_WORKSPACE }}
+          TFC_WORKSPACE: ${{ vars.TFC_DEV_WORKSPACE }}
         run: |
           set -euo pipefail
           : "${TFC_ORGANIZATION:?Missing GitHub Actions variable TFC_ORGANIZATION}"
-          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_WORKSPACE}"
+          : "${TFC_WORKSPACE:?Missing GitHub Actions variable TFC_DEV_WORKSPACE}"
 
           cat > backend.hcl <<EOF
           organization = "${TFC_ORGANIZATION}"
@@ -653,10 +568,20 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          curl -fsS -X POST \
+          APP_ID=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.loan_app_id }}/deployments
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.LOAN_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${LOAN_APP_NAME}"
+            exit 1
+          fi
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 
 
 # =========================================================
@@ -690,8 +615,18 @@ jobs:
 
       - name: Trigger DigitalOcean deployment
         run: |
-          curl -fsS -X POST \
+          APP_ID=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
             -H "Content-Type: application/json" \
-            https://api.digitalocean.com/v2/apps/${{ needs.terraform.outputs.frontend_app_id }}/deployments
+            https://api.digitalocean.com/v2/apps | jq -r '.apps[] | select(.spec.name == env.FRONTEND_APP_NAME) | .id' | head -n 1)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "Could not find app id for ${FRONTEND_APP_NAME}"
+            exit 1
+          fi
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.digitalocean.com/v2/apps/$APP_ID/deployments
 
