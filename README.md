@@ -2,6 +2,16 @@
 
 A cloud-native microservices platform for managing device loans in a campus environment. This system enables students and staff to reserve, borrow, and return devices (laptops, tablets, etc.) with automated workflows, waitlist management, and comprehensive tracking.
 
+
+Student Name: Okeke Chiemelie Gerald
+Student ID: C2581202
+
+Description:
+This repository contains the source code, infrastructure configuration,
+documentation, and demonstration media for the Campus Device Loan System
+developed as part of the Cloud Native DevOps (CIS3039-N) module.
+
+
 ## 📋 Overview
 
 The Campus Device Loan System is a full-stack application built with a microservices architecture. It provides:
@@ -236,6 +246,8 @@ npm test
 npm run test:coverage
 ```
 
+> 📋 **For a complete list of all test cases across the project, see [Test Cases Documentation](./TEST_CASES_DOCUMENTATION.md)**
+
 ## 📚 Documentation
 
 For comprehensive documentation including architecture details, API references, and detailed component guides, see the **[Documentation Hub](./docs/README.md)**.
@@ -244,6 +256,7 @@ For comprehensive documentation including architecture details, API references, 
 
 - **[📖 Documentation Hub](./docs/README.md)** - Central documentation index with detailed guides
 - **[🔌 API Reference](./docs/backend/API.md)** - Complete API documentation for all services
+- **[📋 Test Cases Documentation](./TEST_CASES_DOCUMENTATION.md)** - Complete list of all test cases across the project
 - [Device Service Documentation](./docs/backend/device-service.md) - Device service setup and usage
 - [Loan Service Documentation](./docs/backend/loan-service.md) - Loan service setup and usage
 - [Database Documentation](./docs/database/database.md) - Database migrations and seeds guide
@@ -269,6 +282,8 @@ The system uses JWT-based authentication:
 - **Unit Tests**: Test individual services, repositories, and utilities
 - **Integration Tests**: Test API endpoints end-to-end (with mocked database)
 - **Test Coverage**: Aim for high coverage of business logic
+
+> 📋 **For a comprehensive list of all test cases organized by service and component, see [Test Cases Documentation](./TEST_CASES_DOCUMENTATION.md)**
 
 ## 📝 API Endpoints
 
