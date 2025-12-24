@@ -63,6 +63,7 @@ jobs:
         working-directory: infra/terraform
         env:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          TF_VAR_github_repo: ${{ github.repository }}
         run: terraform init -backend-config=backend.hcl
 
       - name: Import existing DO resources (avoid name already exists)
@@ -73,6 +74,7 @@ jobs:
           TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_TOKEN }}
           TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
           TF_VAR_jwt_expires_in: ${{ secrets.JWT_EXPIRES_IN }}
+          TF_VAR_github_repo: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -167,9 +169,13 @@ jobs:
 
       - name: Prepare dev auto tfvars (required for Terraform Cloud remote runs)
         working-directory: infra/terraform
+        env:
+          GITHUB_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           cp env/dev.tfvars dev.auto.tfvars
+          # Add github_repo to auto tfvars (set automatically from GitHub context)
+          echo "github_repo = \"${GITHUB_REPO}\"" >> dev.auto.tfvars
 
       - name: Sync Terraform Cloud workspace variables (from GitHub secrets)
         working-directory: infra/terraform
@@ -256,10 +262,13 @@ jobs:
           upsert_var "do_token"        "$DO_TOKEN"       "true"  "terraform"
           upsert_var "jwt_secret"      "$JWT_SECRET"     "true"  "terraform"
           upsert_var "jwt_expires_in"  "$JWT_EXPIRES_IN" "false" "terraform"
+          upsert_var "github_repo"     "${{ github.repository }}" "false" "terraform"
 
       - name: Terraform plan (detect changes)
         id: tf_plan
         working-directory: infra/terraform
+        env:
+          TF_VAR_github_repo: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -286,6 +295,8 @@ jobs:
       - name: Terraform apply (create/update)
         if: steps.tf_plan.outputs.has_changes == 'true'
         working-directory: infra/terraform
+        env:
+          TF_VAR_github_repo: ${{ github.repository }}
         run: terraform apply -auto-approve
 
       # Important: On a brand-new workspace we may only import (no config drift), so plan=0 and apply would be skipped.
@@ -294,6 +305,8 @@ jobs:
       - name: Terraform apply (finalize imported state + outputs)
         if: steps.tf_plan.outputs.has_changes == 'false' && steps.bootstrap_import.outputs.import_ran == 'true'
         working-directory: infra/terraform
+        env:
+          TF_VAR_github_repo: ${{ github.repository }}
         run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (for downstream jobs)
